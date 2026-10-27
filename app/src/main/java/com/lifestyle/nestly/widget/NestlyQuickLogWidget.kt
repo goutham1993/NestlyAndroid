@@ -8,9 +8,11 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.action.Action
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -59,24 +61,46 @@ private fun QuickLogContent(context: Context) {
             modifier = GlanceModifier.padding(bottom = 6.dp),
         )
         Row(modifier = GlanceModifier.fillMaxWidth()) {
-            QuickButton(context, "Bottle", EntryKind.BOTTLE, Feed, GlanceModifier.defaultWeight())
+            // Bottle is a one-tap log: saves the default amount at the current
+            // time in the background and confirms with a toast, without
+            // opening the app. The other buttons still open their entry sheet.
+            QuickButton(
+                "Bottle",
+                actionRunCallback<SaveBottleFeedCallback>(),
+                Feed,
+                GlanceModifier.defaultWeight(),
+            )
             Spacer(GlanceModifier.width(6.dp))
-            QuickButton(context, "Diaper", EntryKind.DIAPER, Diaper, GlanceModifier.defaultWeight())
+            QuickButton(
+                "Diaper",
+                actionStartActivity(WidgetActions.openEntryIntent(context, EntryKind.DIAPER)),
+                Diaper,
+                GlanceModifier.defaultWeight(),
+            )
         }
         Spacer(GlanceModifier.height(6.dp))
         Row(modifier = GlanceModifier.fillMaxWidth()) {
-            QuickButton(context, "Sleep", EntryKind.SLEEP, Sleep, GlanceModifier.defaultWeight())
+            QuickButton(
+                "Sleep",
+                actionStartActivity(WidgetActions.openEntryIntent(context, EntryKind.SLEEP)),
+                Sleep,
+                GlanceModifier.defaultWeight(),
+            )
             Spacer(GlanceModifier.width(6.dp))
-            QuickButton(context, "Pump", EntryKind.PUMP, Pump, GlanceModifier.defaultWeight())
+            QuickButton(
+                "Pump",
+                actionStartActivity(WidgetActions.openEntryIntent(context, EntryKind.PUMP)),
+                Pump,
+                GlanceModifier.defaultWeight(),
+            )
         }
     }
 }
 
 @Composable
 private fun QuickButton(
-    context: Context,
     label: String,
-    kind: EntryKind,
+    action: Action,
     tint: Color,
     modifier: GlanceModifier,
 ) {
@@ -91,7 +115,7 @@ private fun QuickButton(
             .height(40.dp)
             .background(ColorProvider(day = tint, night = tint))
             .padding(horizontal = 4.dp, vertical = 10.dp)
-            .clickable(actionStartActivity(WidgetActions.openEntryIntent(context, kind))),
+            .clickable(action),
     )
 }
 

@@ -19,8 +19,10 @@ import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.DinnerDining
 import androidx.compose.material.icons.outlined.EggAlt
 import androidx.compose.material.icons.outlined.LunchDining
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -203,12 +205,59 @@ private fun BottleFields(form: FormScope, layout: ActivityLayout) {
             }
         }
     }
+    // Set when the user manually enters an amount that differs from the stored default;
+    // drives the "update your default?" prompt below.
+    var pendingDefaultMl by remember { mutableStateOf<Double?>(null) }
     if (editingAmount) {
         val display = d.bottleMl?.let { Units.mlToDisplay(it, units.volume) }
         NumberInputDialog("Amount", Units.volumeLabel(units.volume), display, onDismiss = { editingAmount = false }) { value ->
             editingAmount = false
-            form.update { it.copy(bottleMl = value?.let { v -> Units.displayToMl(v, units.volume) }) }
+            val newMl = value?.let { v -> Units.displayToMl(v, units.volume) }
+            form.update { it.copy(bottleMl = newMl) }
+            if (shouldOfferDefaultBottleUpdate(form.controller.isEditing, newMl, form.controller.defaultBottleMl)) {
+                pendingDefaultMl = newMl
+            }
         }
+    }
+    pendingDefaultMl?.let { pendingMl ->
+        val currentDefault = form.controller.defaultBottleMl
+        AlertDialog(
+            onDismissRequest = { pendingDefaultMl = null },
+            containerColor = NestlyColors.Surface,
+            title = {
+                Text(
+                    if (currentDefault == null) "Set as default amount?" else "Update default amount?",
+                    style = NestlyType.RowLabel,
+                )
+            },
+            text = {
+                Text(
+                    if (currentDefault == null) {
+                        "Use ${Format.volume(pendingMl, units)} as your default bottle amount? " +
+                            "It will pre-fill future bottle feeds. This feed will use ${Format.volume(pendingMl, units)} either way."
+                    } else {
+                        "Your default bottle amount is ${Format.volume(currentDefault, units)}. " +
+                            "Change it to ${Format.volume(pendingMl, units)} for future feeds? " +
+                            "This feed will use ${Format.volume(pendingMl, units)} either way."
+                    },
+                    style = NestlyType.Small,
+                    color = NestlyColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    form.controller.updateDefaultBottleMl(pendingMl)
+                    pendingDefaultMl = null
+                }) {
+                    Text(if (currentDefault == null) "Yes, set default" else "Yes, update default", color = NestlyColors.AccentText)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDefaultMl = null }) {
+                    Text(if (currentDefault == null) "Not now" else "No, keep default", color = NestlyColors.AccentText)
+                }
+            },
+        )
     }
 }
 

@@ -3,6 +3,7 @@ package com.lifestyle.nestly.data.prefs
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -73,6 +74,9 @@ class UserPreferences(context: Context) {
         ActivityLayout(order, disabled)
     }
 
+    /** Default bottle amount (in mL) used to pre-fill new bottle/combo feeds, or null if unset. */
+    val defaultBottleMl: Flow<Double?> = store.data.map { it[DEFAULT_BOTTLE_ML] }
+
     val filters: Flow<Set<FilterOption>> = store.data.map { prefs ->
         prefs[FILTERS].orEmpty().mapNotNull { name -> FilterOption.entries.find { it.name == name } }.toSet()
     }
@@ -99,6 +103,10 @@ class UserPreferences(context: Context) {
         prefs[FILTERS] = filters.map { it.name }.toSet()
     }
 
+    suspend fun setDefaultBottleMl(ml: Double?) = store.edit { prefs ->
+        if (ml == null) prefs.remove(DEFAULT_BOTTLE_ML) else prefs[DEFAULT_BOTTLE_ML] = ml
+    }
+
     suspend fun setUnits(units: UnitPrefs) = store.edit { prefs ->
         prefs[VOLUME_UNIT] = units.volume.name
         prefs[WEIGHT_UNIT] = units.weight.name
@@ -116,5 +124,6 @@ class UserPreferences(context: Context) {
         val WEIGHT_UNIT = stringPreferencesKey("weight_unit")
         val LENGTH_UNIT = stringPreferencesKey("length_unit")
         val TEMP_UNIT = stringPreferencesKey("temp_unit")
+        val DEFAULT_BOTTLE_ML = doublePreferencesKey("default_bottle_ml")
     }
 }

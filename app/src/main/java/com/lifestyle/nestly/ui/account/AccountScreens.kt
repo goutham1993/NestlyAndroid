@@ -40,8 +40,11 @@ import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
+import com.lifestyle.nestly.data.units.UnitPrefs
+import com.lifestyle.nestly.data.units.Units
 import com.lifestyle.nestly.ui.components.MenuRow
 import com.lifestyle.nestly.ui.components.NestlySwitch
+import com.lifestyle.nestly.ui.components.NumberInputDialog
 import com.lifestyle.nestly.ui.components.RowDivider
 import com.lifestyle.nestly.ui.components.SectionHeading
 import com.lifestyle.nestly.ui.components.SegmentedToggle
@@ -263,6 +266,9 @@ private fun EditChildDialog(
 fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
     val container = LocalContext.current.appContainer
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val defaultBottleMl by container.preferences.defaultBottleMl.collectAsStateWithLifecycle(initialValue = null)
+    val unitPrefs by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
+    var editingDefaultAmount by remember { mutableStateOf(false) }
     var confirmingClear by remember { mutableStateOf(false) }
     var clearing by remember { mutableStateOf(false) }
     var clearError by remember { mutableStateOf<String?>(null) }
@@ -275,6 +281,21 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
         MenuRow("Email & password", onClick = { navigate(Routes.EMAIL) })
         MenuRow("Units", onClick = { navigate(Routes.UNITS) })
         MenuRow("Communication preferences", onClick = { navigate(Routes.COMMUNICATION) })
+
+        SectionHeading("Feeding")
+        MenuRow(
+            "Default bottle amount",
+            subtitle = if (defaultBottleMl != null) "Pre-fills new bottle & combo feeds" else "Not set — new bottle feeds start empty",
+            value = defaultBottleMl?.let { Format.volume(it, unitPrefs) },
+            serif = false,
+            onClick = { editingDefaultAmount = true },
+        )
+        Text(
+            "Tap to change it. Leave the amount empty and tap OK to turn the default off.",
+            style = NestlyType.Small,
+            color = NestlyColors.TextSecondary,
+            modifier = Modifier.padding(20.dp),
+        )
 
         // TEST ONLY: wipe this family's Supabase data to restart testing
         // (e.g. re-import from Nara). Debug builds only; remove before release.
@@ -290,6 +311,20 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
             )
             clearError?.let {
                 Text(it, style = NestlyType.Small, color = NestlyColors.Danger, modifier = Modifier.padding(20.dp))
+            }
+        }
+    }
+
+    if (editingDefaultAmount) {
+        NumberInputDialog(
+            title = "Default bottle amount",
+            unit = Units.volumeLabel(unitPrefs.volume),
+            initial = defaultBottleMl?.let { Units.mlToDisplay(it, unitPrefs.volume) },
+            onDismiss = { editingDefaultAmount = false },
+        ) { value ->
+            editingDefaultAmount = false
+            scope.launch {
+                container.preferences.setDefaultBottleMl(value?.let { Units.displayToMl(it, unitPrefs.volume) })
             }
         }
     }

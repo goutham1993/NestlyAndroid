@@ -14,6 +14,15 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.util.UUID
+import kotlin.math.abs
+
+/**
+ * Whether manually entering [newMl] in a new (not edited) entry should offer to update the
+ * stored default. Tolerates the small drift from mL ⇄ oz display rounding, so simply opening
+ * the amount dialog and tapping OK never prompts.
+ */
+fun shouldOfferDefaultBottleUpdate(isEditing: Boolean, newMl: Double?, defaultMl: Double?): Boolean =
+    !isEditing && newMl != null && (defaultMl == null || abs(newMl - defaultMl) > 0.5)
 
 /**
  * State and actions for one open entry sheet. New Breastfeed, Pump and Sleep entries keep their
@@ -34,6 +43,9 @@ class EntryController(
         private set
     var lastBottleMl by mutableStateOf<Double?>(null)
         private set
+    /** Stored default bottle amount (mL) pre-filled into new entries; null when unset/not loaded. */
+    var defaultBottleMl by mutableStateOf<Double?>(null)
+        private set
     var lastSide by mutableStateOf<BreastSide?>(null)
         private set
     var saving by mutableStateOf(false)
@@ -53,6 +65,12 @@ class EntryController(
 
     fun update(transform: (EntryDraft) -> EntryDraft) {
         draft = transform(draft)
+    }
+
+    /** Persists [ml] as the default bottle amount for future entries (null clears it). */
+    fun updateDefaultBottleMl(ml: Double?) {
+        defaultBottleMl = ml
+        scope.launch { container.preferences.setDefaultBottleMl(ml) }
     }
 
     /** Starting one breast side pauses the other, as in Nara. */
@@ -231,6 +249,15 @@ class EntryController(
                 loaded = true
             }
             else -> Unit
+        }
+        // Pre-fill new bottle/combo feeds with the stored default amount. Done before the
+        // profile lookup so it lands quickly, and never overwrites an amount the user has
+        // already typed if they beat this load to it.
+        if (editId == null && kind in setOf(EntryKind.BOTTLE, EntryKind.COMBO)) {
+            runCatching { container.preferences.defaultBottleMl.first() }.getOrNull()?.let { default ->
+                defaultBottleMl = default
+                if (draft.bottleMl == null) draft = draft.copy(bottleMl = default)
+            }
         }
         val profile = container.family.selectedProfile.first() ?: return
         if (kind == EntryKind.BOTTLE || kind == EntryKind.COMBO) {

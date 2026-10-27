@@ -35,6 +35,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Strict online-only: always refetch fresh state when the app returns
+        // to the foreground; Realtime events missed while backgrounded are
+        // not replayed.
+        appContainer.realtime.refreshAll()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)

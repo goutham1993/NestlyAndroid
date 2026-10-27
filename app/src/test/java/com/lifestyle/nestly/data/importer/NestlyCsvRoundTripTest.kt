@@ -1,13 +1,12 @@
 package com.lifestyle.nestly.data.importer
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BottleDetails
-import com.lifestyle.nestly.data.db.entity.DiaperDetails
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.MilkType
-import com.lifestyle.nestly.data.db.entity.PumpDetails
-import com.lifestyle.nestly.data.db.entity.SyncState
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BottleDetails
+import com.lifestyle.nestly.data.model.DiaperDetails
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.PumpDetails
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -32,7 +31,6 @@ class NestlyCsvRoundTripTest {
             ),
             createdAt = 1_700_000_000_100L,
             updatedAt = 1_700_000_000_200L,
-            syncState = SyncState.PENDING_UPLOAD,
         )
         val pump = ActivityEntity(
             id = "act-pump",

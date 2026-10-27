@@ -29,8 +29,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.lifestyle.nestly.data.db.entity.ProfileEntity
-import com.lifestyle.nestly.data.db.entity.Sex
+import com.lifestyle.nestly.appContainer
+import com.lifestyle.nestly.data.model.ProfileEntity
+import kotlinx.coroutines.launch
+import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes
 import com.lifestyle.nestly.ui.activity.AddChildDialog
@@ -115,6 +117,8 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                 )
             }
             MenuRow("Add caregiver", serif = false, chevron = false, onClick = { addingCaregiver = true })
+            SectionHeading("Invite to this family")
+            InviteSection(appViewModel)
             Text(
                 "Entries you log are recorded as added by your profile. Tap a child to edit their details.",
                 style = NestlyType.Small,
@@ -154,6 +158,33 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                 if (name.isNotBlank()) appViewModel.addCaregiver(name)
             },
         )
+    }
+}
+
+@Composable
+private fun InviteSection(appViewModel: AppViewModel) {
+    val profiles by appViewModel.profiles.collectAsStateWithLifecycle()
+    val familyId = profiles?.firstOrNull()?.familyId
+    var inviteCode by remember { mutableStateOf<String?>(null) }
+    var inviteError by remember { mutableStateOf<String?>(null) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val container = LocalContext.current.appContainer
+    MenuRow(
+        "Create invite code",
+        subtitle = inviteCode?.let { "Code: $it — share it with another caregiver" } ?: "They enter it when joining",
+        serif = false,
+        chevron = false,
+        onClick = {
+            val fid = familyId ?: return@MenuRow
+            scope.launch {
+                runCatching { container.family.createInvite(fid) }
+                    .onSuccess { inviteCode = it.code; inviteError = null }
+                    .onFailure { inviteError = it.message }
+            }
+        },
+    )
+    inviteError?.let {
+        Text(it, style = NestlyType.Small, color = NestlyColors.Danger, modifier = Modifier.padding(horizontal = 20.dp))
     }
 }
 
@@ -230,24 +261,96 @@ private fun EditChildDialog(
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
-    DetailScreen("Settings", onBack, action = "Log Out", onAction = {}) {
+    val container = LocalContext.current.appContainer
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var confirmingClear by remember { mutableStateOf(false) }
+    var clearing by remember { mutableStateOf(false) }
+    var clearError by remember { mutableStateOf<String?>(null) }
+    DetailScreen("Settings", onBack, action = "Log Out", onAction = {
+        scope.launch {
+            runCatching { container.auth.signOut() }
+            container.realtime.unsubscribe()
+        }
+    }) {
         MenuRow("Email & password", onClick = { navigate(Routes.EMAIL) })
         MenuRow("Units", onClick = { navigate(Routes.UNITS) })
         MenuRow("Communication preferences", onClick = { navigate(Routes.COMMUNICATION) })
+
+        // TEST ONLY: wipe this family's Supabase data to restart testing
+        // (e.g. re-import from Nara). Debug builds only; remove before release.
+        if (com.lifestyle.nestly.BuildConfig.DEBUG) {
+            SectionHeading("Testing")
+            MenuRow(
+                "Clear all data",
+                subtitle = "Deletes this family's children, activities, reminders and photos from Supabase",
+                serif = false,
+                chevron = false,
+                color = NestlyColors.Danger,
+                onClick = { clearError = null; confirmingClear = true },
+            )
+            clearError?.let {
+                Text(it, style = NestlyType.Small, color = NestlyColors.Danger, modifier = Modifier.padding(20.dp))
+            }
+        }
+    }
+
+    if (confirmingClear) {
+        AlertDialog(
+            onDismissRequest = { if (!clearing) confirmingClear = false },
+            containerColor = NestlyColors.Surface,
+            title = { Text("Clear all data?", style = NestlyType.RowLabel) },
+            text = {
+                Text(
+                    "This permanently deletes this family's children, activities, reminders, invites and photos " +
+                        "from Supabase for every caregiver. This cannot be undone. You'll return to setup and can re-import from Nara.",
+                    style = NestlyType.Small,
+                    color = NestlyColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !clearing,
+                    onClick = {
+                        clearing = true
+                        scope.launch {
+                            val outcome = runCatching {
+                                val familyId = container.family.currentFamilyId()
+                                if (familyId != null) {
+                                    runCatching { container.photos.clearFamilyPhotos(familyId) }
+                                }
+                                container.family.clearCurrentFamilyData()
+                            }
+                            clearing = false
+                            confirmingClear = false
+                            outcome.onFailure {
+                                clearError = "Couldn't clear data: ${it.message ?: "check your connection and try again."}"
+                            }
+                            // On success the profiles flow empties and the app
+                            // returns to onboarding automatically.
+                        }
+                    },
+                ) {
+                    Text(if (clearing) "Clearing…" else "Clear everything", color = NestlyColors.Danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmingClear = false }, enabled = !clearing) {
+                    Text("Cancel", color = NestlyColors.AccentText)
+                }
+            },
+        )
     }
 }
 
 @Composable
 fun EmailPasswordScreen(onBack: () -> Unit) {
+    val container = LocalContext.current.appContainer
+    val email = container.auth.currentEmail
     DetailScreen("Email & password", onBack) {
-        MenuRow("Email", subtitle = "Not signed in", chevron = false)
-        MenuRow("Reset Password", serif = false, chevron = false)
-        MenuRow("Change Email Address", serif = false, chevron = false)
-        MenuRow("Verify Email Address", serif = false, chevron = false)
-        Spacer(Modifier.height(20.dp))
-        MenuRow("Delete account", serif = false, chevron = false, color = NestlyColors.Danger)
+        MenuRow("Email", subtitle = email ?: "Signed in", chevron = false)
         Text(
-            "Accounts and sync are coming later. Your data is stored on this device.",
+            "Your account is used to share this family's data with other caregivers through Supabase. " +
+                "Data is stored online only; there is no local copy on this device.",
             style = NestlyType.Small,
             color = NestlyColors.TextSecondary,
             modifier = Modifier.padding(20.dp),

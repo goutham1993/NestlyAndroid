@@ -73,6 +73,16 @@ fun EntrySheetHost(request: EntryRequest, onDismiss: () -> Unit) {
         saveEnabled = controller.loaded && !controller.saving && EntryBuilder.canSave(kind, form.effective),
         onDelete = if (controller.isEditing) ({ controller.delete(onDone = onDismiss) }) else null,
     ) {
+        controller.saveError?.let { message ->
+            Text(
+                message,
+                style = NestlyType.Small,
+                color = NestlyColors.Danger,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+            )
+        }
         if (!controller.loaded) {
             Box(
                 Modifier

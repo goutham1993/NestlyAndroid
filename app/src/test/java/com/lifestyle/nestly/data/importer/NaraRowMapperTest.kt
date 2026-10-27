@@ -1,12 +1,12 @@
 package com.lifestyle.nestly.data.importer
 
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BreastSide
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.MilkType
-import com.lifestyle.nestly.data.db.entity.Sex
-import com.lifestyle.nestly.data.db.entity.StoolColor
-import com.lifestyle.nestly.data.db.entity.StoolTexture
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.Sex
+import com.lifestyle.nestly.data.model.StoolColor
+import com.lifestyle.nestly.data.model.StoolTexture
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

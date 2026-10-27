@@ -10,7 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.lifestyle.nestly.MainActivity
 import com.lifestyle.nestly.R
-import com.lifestyle.nestly.data.db.entity.ReminderKind
+import com.lifestyle.nestly.data.model.ReminderKind
 
 object ReminderNotifications {
     const val CHANNEL_ID = "reminders"

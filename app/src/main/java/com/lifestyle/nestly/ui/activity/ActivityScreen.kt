@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lifestyle.nestly.appContainer
-import com.lifestyle.nestly.data.db.entity.Sex
+import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes

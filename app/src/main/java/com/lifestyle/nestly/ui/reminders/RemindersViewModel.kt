@@ -3,8 +3,8 @@ package com.lifestyle.nestly.ui.reminders
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.ReminderEntity
-import com.lifestyle.nestly.data.db.entity.ReminderKind
+import com.lifestyle.nestly.data.model.ReminderEntity
+import com.lifestyle.nestly.data.model.ReminderKind
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

@@ -1,19 +1,19 @@
 package com.lifestyle.nestly.data.importer
 
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BottleDetails
-import com.lifestyle.nestly.data.db.entity.BreastSide
-import com.lifestyle.nestly.data.db.entity.BreastfeedDetails
-import com.lifestyle.nestly.data.db.entity.DiaperDetails
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.GrowthDetails
-import com.lifestyle.nestly.data.db.entity.MilestoneDetails
-import com.lifestyle.nestly.data.db.entity.MilkType
-import com.lifestyle.nestly.data.db.entity.ProfileType
-import com.lifestyle.nestly.data.db.entity.PumpDetails
-import com.lifestyle.nestly.data.db.entity.Sex
-import com.lifestyle.nestly.data.db.entity.StoolColor
-import com.lifestyle.nestly.data.db.entity.StoolTexture
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BottleDetails
+import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.BreastfeedDetails
+import com.lifestyle.nestly.data.model.DiaperDetails
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.GrowthDetails
+import com.lifestyle.nestly.data.model.MilestoneDetails
+import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.ProfileType
+import com.lifestyle.nestly.data.model.PumpDetails
+import com.lifestyle.nestly.data.model.Sex
+import com.lifestyle.nestly.data.model.StoolColor
+import com.lifestyle.nestly.data.model.StoolTexture
 import java.time.LocalDate
 
 /** Parsed Nara row, independent of database ids for caregivers. */
@@ -89,7 +89,7 @@ object NaraRowMapper {
 
     private fun activity(familyKey: String, row: Map<String, String>, type: ActivityType): NaraRecord.Activity? {
         val key = row["_activityKey"] ?: return null
-        val start = row["Start Date/time (Epoch)"]?.toLongOrNull() ?: return null
+        val start = row["Start Date/time (Epoch)"]?.toLongFlexible() ?: return null
         return NaraRecord.Activity(
             familyKey = familyKey,
             activityKey = key,
@@ -133,9 +133,9 @@ object NaraRowMapper {
         val left = volumeMl(row, "[Pump] Left Volume")
         val right = volumeMl(row, "[Pump] Right Volume")
         val total = volumeMl(row, "[Pump] Total Volume") ?: sumOrNull(left, right)
-        val rawEnd = row["[Pump] End Date/time (Epoch)"]?.toLongOrNull()
+        val rawEnd = row["[Pump] End Date/time (Epoch)"]?.toLongFlexible()
         val end = rawEnd?.coerceAtLeast(base.startTime)
-        val duration = (row["[Pump] Duration (Seconds)"]?.toLongOrNull() ?: 0L).coerceAtLeast(0L)
+        val duration = (row["[Pump] Duration (Seconds)"]?.toLongFlexible() ?: 0L).coerceAtLeast(0L)
         return base.copy(
             endTime = end,
             pump = PumpDetails(durationSec = duration, leftMl = left, rightMl = right, totalMl = total),
@@ -145,8 +145,8 @@ object NaraRowMapper {
     private fun mapBreastfeed(familyKey: String, row: Map<String, String>): NaraRecord.Activity? {
         val base = activity(familyKey, row, ActivityType.BREASTFEED) ?: return null
         val rawEnd = row["[Breastfeed] End Side"]
-        val left = (row["[Breastfeed] Left Duration (Seconds)"]?.toLongOrNull() ?: 0L).coerceAtLeast(0L)
-        val right = (row["[Breastfeed] Right Duration (Seconds)"]?.toLongOrNull() ?: 0L).coerceAtLeast(0L)
+        val left = (row["[Breastfeed] Left Duration (Seconds)"]?.toLongFlexible() ?: 0L).coerceAtLeast(0L)
+        val right = (row["[Breastfeed] Right Duration (Seconds)"]?.toLongFlexible() ?: 0L).coerceAtLeast(0L)
         return base.copy(
             endTime = base.startTime + (left + right) * 1000,
             breastfeed = BreastfeedDetails(
@@ -218,3 +218,8 @@ object NaraRowMapper {
     private inline fun <reified T : Enum<T>> enumOrNull(raw: String): T? =
         enumValues<T>().firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) }
 }
+
+/** Spreadsheet numeric cells arrive as "1790896458000.0" / "1.79E12", not plain longs. */
+internal fun String.toLongFlexible(): Long? =
+    trim().toLongOrNull() ?: trim().toDoubleOrNull()?.toLong()
+

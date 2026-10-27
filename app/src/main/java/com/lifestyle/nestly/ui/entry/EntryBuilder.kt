@@ -1,21 +1,21 @@
 package com.lifestyle.nestly.ui.entry
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BabyFirstDetails
-import com.lifestyle.nestly.data.db.entity.BottleDetails
-import com.lifestyle.nestly.data.db.entity.BreastSide
-import com.lifestyle.nestly.data.db.entity.BreastfeedDetails
-import com.lifestyle.nestly.data.db.entity.DiaperDetails
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.GrowthDetails
-import com.lifestyle.nestly.data.db.entity.MedicalDetails
-import com.lifestyle.nestly.data.db.entity.MilestoneDetails
-import com.lifestyle.nestly.data.db.entity.MilkType
-import com.lifestyle.nestly.data.db.entity.PumpDetails
-import com.lifestyle.nestly.data.db.entity.RoutineDetails
-import com.lifestyle.nestly.data.db.entity.SolidsDetails
-import com.lifestyle.nestly.data.db.entity.VaccineDetails
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BabyFirstDetails
+import com.lifestyle.nestly.data.model.BottleDetails
+import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.BreastfeedDetails
+import com.lifestyle.nestly.data.model.DiaperDetails
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.GrowthDetails
+import com.lifestyle.nestly.data.model.MedicalDetails
+import com.lifestyle.nestly.data.model.MilestoneDetails
+import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.PumpDetails
+import com.lifestyle.nestly.data.model.RoutineDetails
+import com.lifestyle.nestly.data.model.SolidsDetails
+import com.lifestyle.nestly.data.model.VaccineDetails
 
 /** Who and where an entry is being saved for. */
 data class EntryContext(

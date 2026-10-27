@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.dp
 import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.catalog.Milestone
 import com.lifestyle.nestly.data.catalog.MilestoneCatalog
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.RowDivider

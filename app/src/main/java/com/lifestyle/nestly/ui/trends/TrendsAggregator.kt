@@ -1,7 +1,7 @@
 package com.lifestyle.nestly.ui.trends
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.prefs.CardKind
 import java.time.Instant
 import java.time.LocalDate

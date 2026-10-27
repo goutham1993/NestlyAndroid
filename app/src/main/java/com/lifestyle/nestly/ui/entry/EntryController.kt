@@ -4,9 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BreastSide
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BreastSide
 import com.lifestyle.nestly.data.timer.TimerKey
 import com.lifestyle.nestly.data.timer.TimerState
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +37,8 @@ class EntryController(
     var lastSide by mutableStateOf<BreastSide?>(null)
         private set
     var saving by mutableStateOf(false)
+        private set
+    var saveError by mutableStateOf<String?>(null)
         private set
 
     val isEditing: Boolean get() = request is EntryRequest.Edit
@@ -142,42 +144,64 @@ class EntryController(
     fun save(timers: Map<TimerKey, TimerState>, onDone: () -> Unit) {
         if (saving) return
         saving = true
+        saveError = null
         scope.launch {
-            val now = System.currentTimeMillis()
-            val d = effectiveDraft(timers, now)
-            val profile = container.family.selectedProfile.first()
-            if (profile == null || !EntryBuilder.canSave(kind, d)) {
-                saving = false
-                return@launch
-            }
-            val ctx = EntryContext(
-                familyId = profile.familyId,
-                profileId = profile.id,
-                caregiverId = container.family.currentCaregiverId(),
-                timeZone = ZoneId.systemDefault().id,
-                now = now,
-                newId = { UUID.randomUUID().toString() },
-            )
-            container.activities.saveAll(EntryBuilder.build(kind, d, ctx, existing))
-            container.scheduler.rescheduleAll(container)
-            if (usesTimers) {
-                when (kind) {
-                    EntryKind.BREASTFEED, EntryKind.COMBO -> container.timers.clear(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)
-                    EntryKind.PUMP -> container.timers.clear(TimerKey.PUMP)
-                    EntryKind.SLEEP -> container.timers.clear(TimerKey.SLEEP)
-                    else -> Unit
+            try {
+                val now = System.currentTimeMillis()
+                val d = effectiveDraft(timers, now)
+                val profile = container.family.selectedProfile.first()
+                if (profile == null || !EntryBuilder.canSave(kind, d)) {
+                    saving = false
+                    if (profile == null) saveError = "No child selected. Check your connection and try again."
+                    return@launch
                 }
+                val ctx = EntryContext(
+                    familyId = profile.familyId,
+                    profileId = profile.id,
+                    caregiverId = container.family.currentCaregiverId(),
+                    timeZone = ZoneId.systemDefault().id,
+                    now = now,
+                    newId = { UUID.randomUUID().toString() },
+                )
+                container.activities.saveAll(EntryBuilder.build(kind, d, ctx, existing))
+                runCatching { container.scheduler.rescheduleAll(container) }
+                if (usesTimers) {
+                    when (kind) {
+                        EntryKind.BREASTFEED, EntryKind.COMBO -> container.timers.clear(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)
+                        EntryKind.PUMP -> container.timers.clear(TimerKey.PUMP)
+                        EntryKind.SLEEP -> container.timers.clear(TimerKey.SLEEP)
+                        else -> Unit
+                    }
+                }
+                onDone()
+            } catch (e: Exception) {
+                // Strict online-only: nothing is queued; the sheet stays open for retry.
+                saveError = if (e is com.lifestyle.nestly.data.supabase.ConflictException) {
+                    // Reload the newest version so the next save can succeed.
+                    existing?.id?.let { id -> runCatching { container.activities.get(id) }.getOrNull() }?.let { fresh ->
+                        existing = fresh
+                        draft = EntryBuilder.draftOf(fresh)
+                    }
+                    e.message
+                } else {
+                    "Couldn't save. Check your connection and tap Save to retry."
+                }
+            } finally {
+                saving = false
             }
-            onDone()
         }
     }
 
     fun delete(onDone: () -> Unit) {
         val id = existing?.id ?: return
         scope.launch {
-            container.activities.delete(id)
-            container.scheduler.rescheduleAll(container)
-            onDone()
+            try {
+                container.activities.delete(id)
+                runCatching { container.scheduler.rescheduleAll(container) }
+                onDone()
+            } catch (e: Exception) {
+                saveError = "Couldn't delete. Check your connection and try again."
+            }
         }
     }
 
@@ -192,15 +216,21 @@ class EntryController(
     }
 
     private suspend fun load() {
-        when (request) {
-            is EntryRequest.Edit -> {
-                val row = container.activities.get(request.activityId) ?: return
-                existing = row
-                kind = EntryKind.of(row.type)
-                draft = EntryBuilder.draftOf(row)
+        val editId = (request as? EntryRequest.Edit)?.activityId
+        when {
+            editId != null -> {
+                val row = runCatching { container.activities.get(editId) }.getOrNull() ?: run {
+                    saveError = "Couldn't load this entry. Check your connection."
+                    loaded = true
+                    return
+                }
+                val resolved = runCatching { container.activities.resolvePhoto(row) }.getOrDefault(row)
+                existing = resolved
+                kind = EntryKind.of(resolved.type)
+                draft = EntryBuilder.draftOf(resolved)
                 loaded = true
             }
-            is EntryRequest.New -> Unit
+            else -> Unit
         }
         val profile = container.family.selectedProfile.first() ?: return
         if (kind == EntryKind.BOTTLE || kind == EntryKind.COMBO) {

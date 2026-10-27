@@ -3,7 +3,7 @@ package com.lifestyle.nestly.ui.trends
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.ProfileEntity
+import com.lifestyle.nestly.data.model.ProfileEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

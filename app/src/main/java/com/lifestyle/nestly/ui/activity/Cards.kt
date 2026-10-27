@@ -11,8 +11,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lifestyle.nestly.data.catalog.MilestoneCatalog
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.prefs.ActivityLayout
 import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.data.prefs.CardKind

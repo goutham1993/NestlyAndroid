@@ -28,7 +28,17 @@ import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
 import java.time.LocalDate
 
-private val CSV_MIME_TYPES = arrayOf("text/csv", "text/comma-separated-values", "application/csv", "text/plain")
+private val CSV_MIME_TYPES = arrayOf(
+    "text/csv",
+    "text/comma-separated-values",
+    "application/csv",
+    "text/plain",
+    "text/tab-separated-values",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.ms-excel", // .xls
+    "application/zip",
+    "application/octet-stream",
+)
 
 @Composable
 fun ImportScreen(viewModel: ImportViewModel, modifier: Modifier = Modifier) {

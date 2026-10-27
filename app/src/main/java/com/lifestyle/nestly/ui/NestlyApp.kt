@@ -96,7 +96,33 @@ fun NestlyApp(
 ) {
     val container = LocalContext.current.appContainer
     val appViewModel: AppViewModel = viewModel { AppViewModel(container) }
+    val authViewModel: com.lifestyle.nestly.ui.auth.AuthViewModel = viewModel { com.lifestyle.nestly.ui.auth.AuthViewModel(container) }
+    val authState by authViewModel.state.collectAsStateWithLifecycle()
+    val authProfiles by authViewModel.profiles.collectAsStateWithLifecycle()
+    val authHasFamily by authViewModel.hasFamily.collectAsStateWithLifecycle()
     val units by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
+
+    when (authState) {
+        com.lifestyle.nestly.ui.auth.AuthState.LOADING -> {
+            com.lifestyle.nestly.ui.auth.LoadingScreen()
+            return
+        }
+        com.lifestyle.nestly.ui.auth.AuthState.SIGNED_OUT -> {
+            com.lifestyle.nestly.ui.auth.AuthScreen(authViewModel)
+            return
+        }
+        com.lifestyle.nestly.ui.auth.AuthState.SIGNED_IN -> {
+            val profiles = authProfiles
+            if (profiles == null) {
+                com.lifestyle.nestly.ui.auth.LoadingScreen("Loading your family…")
+                return
+            }
+            if (profiles.isEmpty()) {
+                com.lifestyle.nestly.ui.auth.OnboardingScreen(authViewModel, hasFamily = authHasFamily)
+                return
+            }
+        }
+    }
     val nav = rememberNavController()
     var entry by remember { mutableStateOf<EntryRequest?>(null) }
     val openEntry: (EntryRequest) -> Unit = { entry = it }
@@ -114,6 +140,8 @@ fun NestlyApp(
                 .fillMaxSize()
                 .background(NestlyColors.Background),
         ) {
+            Column(Modifier.fillMaxSize()) {
+            com.lifestyle.nestly.ui.auth.DataErrorBanner()
             NavHost(nav, startDestination = Routes.MAIN) {
                 composable(Routes.MAIN) {
                     MainTabs(appViewModel, openEntry, navigate = { nav.navigate(it) })
@@ -132,6 +160,7 @@ fun NestlyApp(
                     val importViewModel = viewModel { ImportViewModel(container, container.appContext.contentResolver) }
                     DetailScreen("Import / Export", onBack = back) { ImportScreen(importViewModel) }
                 }
+            }
             }
             entry?.let { request ->
                 EntrySheetHost(request, onDismiss = { entry = null })

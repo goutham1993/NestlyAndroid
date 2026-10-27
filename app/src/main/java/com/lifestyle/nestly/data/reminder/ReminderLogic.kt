@@ -1,7 +1,7 @@
 package com.lifestyle.nestly.data.reminder
 
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.ReminderKind
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.ReminderKind
 
 object ReminderLogic {
     fun typesFor(kind: ReminderKind): List<ActivityType> = when (kind) {

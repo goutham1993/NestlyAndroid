@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
+
+// Supabase project config. Publishable (anon) key only — RLS is the security
+// boundary; never put a service-role key here. Override in local.properties
+// with SUPABASE_URL / SUPABASE_KEY for a different project.
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val supabaseUrl = localProps.getProperty("SUPABASE_URL")
+    ?: "https://kuyskumyayiwpyiwhkup.supabase.co"
+val supabaseKey = localProps.getProperty("SUPABASE_KEY")
+    ?: "sb_publishable_zZmg34taTJm9k57PdYBEug_JGcRZ21_"
 
 android {
     namespace = "com.lifestyle.nestly"
@@ -18,6 +32,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"$supabaseKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,14 +52,8 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
-    sourceSets {
-        getByName("androidTest").assets.srcDir("$projectDir/schemas")
-    }
-}
-
-ksp {
-    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 dependencies {
@@ -61,9 +72,13 @@ dependencies {
     implementation(libs.androidx.glance.material3)
     debugImplementation(libs.compose.ui.tooling)
 
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.realtime)
+    implementation(libs.supabase.storage)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
@@ -72,5 +87,4 @@ dependencies {
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
-    androidTestImplementation(libs.room.testing)
 }

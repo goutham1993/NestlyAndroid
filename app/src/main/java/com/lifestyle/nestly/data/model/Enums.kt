@@ -1,6 +1,4 @@
-package com.lifestyle.nestly.data.db.entity
-
-enum class SyncState { SYNCED, PENDING_UPLOAD, PENDING_DELETE }
+package com.lifestyle.nestly.data.model
 
 enum class ActivityType {
     BOTTLE_FEED,
@@ -32,3 +30,5 @@ enum class DiaperType { WET, DIRTY, MIXED, DRY }
 enum class StoolColor { YELLOW, GREEN, BROWN, BLACK, RED, WHITE, ORANGE }
 
 enum class StoolTexture { RUN, MUSH, SOLID, MUCOUS, SEEDY, HARD }
+
+enum class ReminderKind { FEED, PUMP, DIAPER, SLEEP }

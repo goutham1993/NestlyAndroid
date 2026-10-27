@@ -37,9 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.catalog.FoodCatalog
-import com.lifestyle.nestly.data.db.entity.BreastSide
-import com.lifestyle.nestly.data.db.entity.MealType
-import com.lifestyle.nestly.data.db.entity.MilkType
+import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.MealType
+import com.lifestyle.nestly.data.model.MilkType
 import com.lifestyle.nestly.data.prefs.ActivityLayout
 import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.data.timer.TimerKey

@@ -39,8 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.lifestyle.nestly.data.catalog.MedicationCatalog
 import com.lifestyle.nestly.data.catalog.RoutineCatalog
 import com.lifestyle.nestly.data.catalog.VaccineCatalog
-import com.lifestyle.nestly.data.db.entity.StoolColor
-import com.lifestyle.nestly.data.db.entity.StoolTexture
+import com.lifestyle.nestly.data.model.StoolColor
+import com.lifestyle.nestly.data.model.StoolTexture
 import com.lifestyle.nestly.data.timer.TimerKey
 import com.lifestyle.nestly.data.units.TempUnit
 import com.lifestyle.nestly.data.units.Units

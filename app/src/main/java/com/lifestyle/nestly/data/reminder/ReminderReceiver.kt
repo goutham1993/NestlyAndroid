@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.lifestyle.nestly.appContainer
-import com.lifestyle.nestly.data.db.entity.ReminderKind
+import com.lifestyle.nestly.data.model.ReminderKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

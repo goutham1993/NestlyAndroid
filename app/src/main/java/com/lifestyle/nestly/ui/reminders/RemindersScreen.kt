@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lifestyle.nestly.appContainer
-import com.lifestyle.nestly.data.db.entity.ReminderKind
+import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.DurationInputDialog

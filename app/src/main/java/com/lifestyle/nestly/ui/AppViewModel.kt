@@ -3,9 +3,9 @@ package com.lifestyle.nestly.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.CaregiverEntity
-import com.lifestyle.nestly.data.db.entity.ProfileEntity
-import com.lifestyle.nestly.data.db.entity.Sex
+import com.lifestyle.nestly.data.model.CaregiverEntity
+import com.lifestyle.nestly.data.model.ProfileEntity
+import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.data.prefs.FilterOption
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

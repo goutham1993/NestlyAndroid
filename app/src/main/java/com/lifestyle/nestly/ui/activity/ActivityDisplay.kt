@@ -1,9 +1,9 @@
 package com.lifestyle.nestly.ui.activity
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.MilkType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.MilkType
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.data.units.UnitPrefs
 import com.lifestyle.nestly.ui.components.Format

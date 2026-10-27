@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.ui.components.ActivityIcon
 import com.lifestyle.nestly.ui.components.Format

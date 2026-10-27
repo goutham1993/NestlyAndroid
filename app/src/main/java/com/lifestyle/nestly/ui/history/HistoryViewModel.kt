@@ -3,8 +3,8 @@ package com.lifestyle.nestly.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ProfileEntity
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.prefs.FilterOption
 import com.lifestyle.nestly.ui.activity.ActivityFilters
 import com.lifestyle.nestly.ui.activity.barValue

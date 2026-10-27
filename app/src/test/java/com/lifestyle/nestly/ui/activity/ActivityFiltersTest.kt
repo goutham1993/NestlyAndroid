@@ -1,9 +1,9 @@
 package com.lifestyle.nestly.ui.activity
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BottleDetails
-import com.lifestyle.nestly.data.db.entity.MilkType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BottleDetails
+import com.lifestyle.nestly.data.model.MilkType
 import com.lifestyle.nestly.data.prefs.FilterOption
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

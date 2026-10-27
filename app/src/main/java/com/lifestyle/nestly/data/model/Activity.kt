@@ -1,52 +1,12 @@
-package com.lifestyle.nestly.data.db.entity
-
-import androidx.room.Embedded
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.PrimaryKey
+package com.lifestyle.nestly.data.model
 
 /**
  * One row per logged event. Only the details block matching [type] is non-null.
  * Volumes are stored in ml, weights in kg and lengths in cm.
+ * Times are epoch millis in the app; the DTO layer converts to/from timestamptz.
  */
-@Entity(
-    tableName = "activity",
-    foreignKeys = [
-        ForeignKey(
-            entity = FamilyEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["familyId"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-        ForeignKey(
-            entity = ProfileEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["profileId"],
-            onDelete = ForeignKey.CASCADE,
-        ),
-        ForeignKey(
-            entity = CaregiverEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["createdById"],
-            onDelete = ForeignKey.SET_NULL,
-        ),
-        ForeignKey(
-            entity = CaregiverEntity::class,
-            parentColumns = ["id"],
-            childColumns = ["updatedById"],
-            onDelete = ForeignKey.SET_NULL,
-        ),
-    ],
-    indices = [
-        Index(value = ["profileId", "type", "startTime"]),
-        Index(value = ["familyId", "startTime"]),
-        Index("createdById"),
-        Index("updatedById"),
-    ],
-)
 data class ActivityEntity(
-    @PrimaryKey val id: String,
+    val id: String,
     val familyId: String,
     /** Null for activities that belong to the caregiver rather than a child, such as pumping. */
     val profileId: String?,
@@ -57,25 +17,26 @@ data class ActivityEntity(
     val note: String? = null,
     val createdById: String? = null,
     val updatedById: String? = null,
-    @Embedded(prefix = "bottle_") val bottle: BottleDetails? = null,
-    @Embedded(prefix = "pump_") val pump: PumpDetails? = null,
-    @Embedded(prefix = "breast_") val breastfeed: BreastfeedDetails? = null,
-    @Embedded(prefix = "diaper_") val diaper: DiaperDetails? = null,
-    @Embedded(prefix = "growth_") val growth: GrowthDetails? = null,
-    @Embedded(prefix = "milestone_") val milestone: MilestoneDetails? = null,
-    @Embedded(prefix = "solids_") val solids: SolidsDetails? = null,
-    @Embedded(prefix = "routine_") val routine: RoutineDetails? = null,
-    @Embedded(prefix = "babyFirst_") val babyFirst: BabyFirstDetails? = null,
-    @Embedded(prefix = "medical_") val medical: MedicalDetails? = null,
-    @Embedded(prefix = "vaccine_") val vaccine: VaccineDetails? = null,
-    /** Path of a photo copied into app storage. */
+    val bottle: BottleDetails? = null,
+    val pump: PumpDetails? = null,
+    val breastfeed: BreastfeedDetails? = null,
+    val diaper: DiaperDetails? = null,
+    val growth: GrowthDetails? = null,
+    val milestone: MilestoneDetails? = null,
+    val solids: SolidsDetails? = null,
+    val routine: RoutineDetails? = null,
+    val babyFirst: BabyFirstDetails? = null,
+    val medical: MedicalDetails? = null,
+    val vaccine: VaccineDetails? = null,
+    /** Storage path in the activity-photos bucket, or a local file path before upload. */
     val photoUri: String? = null,
     /** Shared by the breastfeed and bottle entries saved together from one Combo Feed. */
     val comboGroupId: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
-    val syncState: SyncState = SyncState.PENDING_UPLOAD,
+    /** Optimistic-locking version; updates must match and increment this. */
+    val version: Int = 1,
 )
 
 data class BottleDetails(
@@ -138,3 +99,7 @@ data class MedicalDetails(
 )
 
 data class VaccineDetails(val vaccines: List<String>)
+
+data class TypeCount(val type: ActivityType, val count: Int)
+
+data class DailyVolume(val day: String, val totalMl: Double, val count: Int)

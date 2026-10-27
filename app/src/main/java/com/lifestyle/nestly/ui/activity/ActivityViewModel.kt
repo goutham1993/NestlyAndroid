@@ -3,9 +3,9 @@ package com.lifestyle.nestly.ui.activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.ProfileEntity
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.prefs.ActivityLayout
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.data.timer.TimerKey

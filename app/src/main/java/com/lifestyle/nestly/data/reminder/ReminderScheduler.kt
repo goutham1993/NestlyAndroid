@@ -7,7 +7,7 @@ import android.content.Intent
 import android.os.Build
 import com.lifestyle.nestly.AppContainer
 import com.lifestyle.nestly.appContainer
-import com.lifestyle.nestly.data.db.entity.ReminderEntity
+import com.lifestyle.nestly.data.model.ReminderEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,7 +15,9 @@ class ReminderScheduler(private val context: Context) {
     private val alarms = context.getSystemService(AlarmManager::class.java)
 
     suspend fun rescheduleAll(container: AppContainer = context.appContainer) = withContext(Dispatchers.IO) {
-        container.reminders.getEnabled().forEach { schedule(it, container) }
+        // Signed-out or offline at boot: keep any already-scheduled alarms as-is.
+        val enabled = runCatching { container.reminders.getEnabled() }.getOrDefault(emptyList())
+        enabled.forEach { runCatching { schedule(it, container) } }
     }
 
     suspend fun schedule(reminder: ReminderEntity, container: AppContainer = context.appContainer) =

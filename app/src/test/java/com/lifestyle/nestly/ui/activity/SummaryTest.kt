@@ -1,11 +1,11 @@
 package com.lifestyle.nestly.ui.activity
 
-import com.lifestyle.nestly.data.db.entity.ActivityEntity
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BottleDetails
-import com.lifestyle.nestly.data.db.entity.DiaperDetails
-import com.lifestyle.nestly.data.db.entity.DiaperType
-import com.lifestyle.nestly.data.db.entity.MilkType
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BottleDetails
+import com.lifestyle.nestly.data.model.DiaperDetails
+import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.MilkType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

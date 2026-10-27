@@ -5,7 +5,10 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
-import com.lifestyle.nestly.data.db.dao.TypeCount
+import com.lifestyle.nestly.data.model.TypeCount
+import com.lifestyle.nestly.data.supabase.RefreshBus
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import com.lifestyle.nestly.data.importer.ExportResult
 import com.lifestyle.nestly.data.importer.ImportResult
 import kotlinx.coroutines.Dispatchers
@@ -42,7 +45,13 @@ class ImportViewModel(
     private val _exportStatus = MutableStateFlow<ExportStatus>(ExportStatus.Idle)
     val exportStatus: StateFlow<ExportStatus> = _exportStatus.asStateFlow()
 
-    val counts: StateFlow<List<TypeCount>> = container.database.activityDao().observeCountsByType()
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val counts: StateFlow<List<TypeCount>> = RefreshBus.tick(RefreshBus.ACTIVITY)
+        .flatMapLatest {
+            flow {
+                emit(runCatching { container.activities.fetchCountsByType() }.getOrDefault(emptyList()))
+            }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun importNara(uri: Uri) = import(uri, "Nara") { stream ->

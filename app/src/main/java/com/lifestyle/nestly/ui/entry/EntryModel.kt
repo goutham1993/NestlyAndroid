@@ -1,12 +1,12 @@
 package com.lifestyle.nestly.ui.entry
 
 import com.lifestyle.nestly.data.catalog.Milestone
-import com.lifestyle.nestly.data.db.entity.ActivityType
-import com.lifestyle.nestly.data.db.entity.BreastSide
-import com.lifestyle.nestly.data.db.entity.MealType
-import com.lifestyle.nestly.data.db.entity.MilkType
-import com.lifestyle.nestly.data.db.entity.StoolColor
-import com.lifestyle.nestly.data.db.entity.StoolTexture
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.MealType
+import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.StoolColor
+import com.lifestyle.nestly.data.model.StoolTexture
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.ui.components.IconKind
 

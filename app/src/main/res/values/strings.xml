@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Nestly</string>
+    <string name="quick_log_widget_description">Quick log Bottle, Diaper, Sleep, or Pump</string>
+    <string name="quick_log_widget_label">Nestly Quick Log</string>
+</resources>

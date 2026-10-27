@@ -1,0 +1,225 @@
+package com.lifestyle.nestly.ui.entry
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.lifestyle.nestly.AppContainer
+import com.lifestyle.nestly.data.db.entity.ActivityEntity
+import com.lifestyle.nestly.data.db.entity.ActivityType
+import com.lifestyle.nestly.data.db.entity.BreastSide
+import com.lifestyle.nestly.data.timer.TimerKey
+import com.lifestyle.nestly.data.timer.TimerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.time.ZoneId
+import java.util.UUID
+
+/**
+ * State and actions for one open entry sheet. New Breastfeed, Pump and Sleep entries keep their
+ * durations in [com.lifestyle.nestly.data.timer.ActiveTimerStore] so timers survive the sheet closing.
+ */
+class EntryController(
+    private val container: AppContainer,
+    val request: EntryRequest,
+    private val scope: CoroutineScope,
+) {
+    var kind by mutableStateOf((request as? EntryRequest.New)?.kind ?: EntryKind.BOTTLE)
+        private set
+    var draft by mutableStateOf(initialDraft(request))
+        private set
+    var existing by mutableStateOf<ActivityEntity?>(null)
+        private set
+    var loaded by mutableStateOf(request is EntryRequest.New)
+        private set
+    var lastBottleMl by mutableStateOf<Double?>(null)
+        private set
+    var lastSide by mutableStateOf<BreastSide?>(null)
+        private set
+    var saving by mutableStateOf(false)
+        private set
+
+    val isEditing: Boolean get() = request is EntryRequest.Edit
+
+    /** True when durations come from the persistent timers rather than the draft. */
+    val usesTimers: Boolean
+        get() = !isEditing && kind in setOf(EntryKind.BREASTFEED, EntryKind.COMBO, EntryKind.PUMP, EntryKind.SLEEP)
+
+    init {
+        scope.launch { load() }
+    }
+
+    fun update(transform: (EntryDraft) -> EntryDraft) {
+        draft = transform(draft)
+    }
+
+    /** Starting one breast side pauses the other, as in Nara. */
+    fun toggleTimer(key: TimerKey) = scope.launch {
+        val now = System.currentTimeMillis()
+        val timers = container.timers
+        val other = when (key) {
+            TimerKey.BREAST_LEFT -> TimerKey.BREAST_RIGHT
+            TimerKey.BREAST_RIGHT -> TimerKey.BREAST_LEFT
+            else -> null
+        }
+        timers.update(key) { it.toggle(now) }
+        if (other != null) timers.update(other) { it.pause(now) }
+    }
+
+    fun setTimerDuration(key: TimerKey, seconds: Long) = scope.launch {
+        if (usesTimers) {
+            container.timers.update(key) {
+                it.copy(
+                    accumulatedMs = seconds * 1000,
+                    runningSince = null,
+                    sessionStart = it.sessionStart ?: (System.currentTimeMillis() - seconds * 1000),
+                )
+            }
+        } else {
+            update {
+                when (key) {
+                    TimerKey.BREAST_LEFT -> it.copy(leftSec = seconds)
+                    TimerKey.BREAST_RIGHT -> it.copy(rightSec = seconds)
+                    TimerKey.PUMP -> it.copy(pumpSec = seconds)
+                    TimerKey.SLEEP -> it.copy(endTime = it.startTime + seconds * 1000)
+                }
+            }
+        }
+    }
+
+    /** The draft with any running timers folded in, as it would be saved right now. */
+    fun effectiveDraft(timers: Map<TimerKey, TimerState>, now: Long): EntryDraft {
+        if (!usesTimers) return draft
+        val d = draft
+        return when (kind) {
+            EntryKind.BREASTFEED, EntryKind.COMBO -> {
+                val left = timers[TimerKey.BREAST_LEFT] ?: TimerState()
+                val right = timers[TimerKey.BREAST_RIGHT] ?: TimerState()
+                val leftSec = left.elapsedMs(now) / 1000
+                val rightSec = right.elapsedMs(now) / 1000
+                val starts = listOfNotNull(left.sessionStart, right.sessionStart)
+                val begin = when {
+                    left.sessionStart == null -> right.sessionStart?.let { BreastSide.RIGHT }
+                    right.sessionStart == null -> BreastSide.LEFT
+                    left.sessionStart <= right.sessionStart -> BreastSide.LEFT
+                    else -> BreastSide.RIGHT
+                }
+                val end = when {
+                    left.isRunning -> BreastSide.LEFT
+                    right.isRunning -> BreastSide.RIGHT
+                    begin == BreastSide.LEFT && right.sessionStart != null -> BreastSide.RIGHT
+                    begin == BreastSide.RIGHT && left.sessionStart != null -> BreastSide.LEFT
+                    else -> begin
+                }
+                d.copy(
+                    leftSec = leftSec,
+                    rightSec = rightSec,
+                    beginSide = begin,
+                    endSide = end,
+                    startTime = if (d.startTimeSet) d.startTime else starts.minOrNull() ?: d.startTime,
+                )
+            }
+            EntryKind.PUMP -> {
+                val t = timers[TimerKey.PUMP] ?: TimerState()
+                if (t.isIdle) d
+                else d.copy(
+                    pumpSec = t.elapsedMs(now) / 1000,
+                    startTime = if (d.startTimeSet) d.startTime else t.sessionStart ?: d.startTime,
+                )
+            }
+            EntryKind.SLEEP -> {
+                val t = timers[TimerKey.SLEEP] ?: TimerState()
+                if (t.isIdle) d
+                else {
+                    val start = if (d.startTimeSet) d.startTime else t.sessionStart ?: d.startTime
+                    d.copy(startTime = start, endTime = start + t.elapsedMs(now))
+                }
+            }
+            else -> d
+        }
+    }
+
+    fun save(timers: Map<TimerKey, TimerState>, onDone: () -> Unit) {
+        if (saving) return
+        saving = true
+        scope.launch {
+            val now = System.currentTimeMillis()
+            val d = effectiveDraft(timers, now)
+            val profile = container.family.selectedProfile.first()
+            if (profile == null || !EntryBuilder.canSave(kind, d)) {
+                saving = false
+                return@launch
+            }
+            val ctx = EntryContext(
+                familyId = profile.familyId,
+                profileId = profile.id,
+                caregiverId = container.family.currentCaregiverId(),
+                timeZone = ZoneId.systemDefault().id,
+                now = now,
+                newId = { UUID.randomUUID().toString() },
+            )
+            container.activities.saveAll(EntryBuilder.build(kind, d, ctx, existing))
+            container.scheduler.rescheduleAll(container)
+            if (usesTimers) {
+                when (kind) {
+                    EntryKind.BREASTFEED, EntryKind.COMBO -> container.timers.clear(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)
+                    EntryKind.PUMP -> container.timers.clear(TimerKey.PUMP)
+                    EntryKind.SLEEP -> container.timers.clear(TimerKey.SLEEP)
+                    else -> Unit
+                }
+            }
+            onDone()
+        }
+    }
+
+    fun delete(onDone: () -> Unit) {
+        val id = existing?.id ?: return
+        scope.launch {
+            container.activities.delete(id)
+            container.scheduler.rescheduleAll(container)
+            onDone()
+        }
+    }
+
+    /** Clears running timers for this sheet without saving. */
+    fun discardTimers() = scope.launch {
+        when (kind) {
+            EntryKind.BREASTFEED, EntryKind.COMBO -> container.timers.clear(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)
+            EntryKind.PUMP -> container.timers.clear(TimerKey.PUMP)
+            EntryKind.SLEEP -> container.timers.clear(TimerKey.SLEEP)
+            else -> Unit
+        }
+    }
+
+    private suspend fun load() {
+        when (request) {
+            is EntryRequest.Edit -> {
+                val row = container.activities.get(request.activityId) ?: return
+                existing = row
+                kind = EntryKind.of(row.type)
+                draft = EntryBuilder.draftOf(row)
+                loaded = true
+            }
+            is EntryRequest.New -> Unit
+        }
+        val profile = container.family.selectedProfile.first() ?: return
+        if (kind == EntryKind.BOTTLE || kind == EntryKind.COMBO) {
+            lastBottleMl = container.activities.getLatest(profile.familyId, profile.id, ActivityType.BOTTLE_FEED)?.bottle?.totalMl
+        }
+        if (kind == EntryKind.BREASTFEED || kind == EntryKind.COMBO) {
+            lastSide = container.activities.getLatest(profile.familyId, profile.id, ActivityType.BREASTFEED)?.breastfeed?.endSide
+        }
+    }
+
+    private fun initialDraft(request: EntryRequest): EntryDraft {
+        val now = System.currentTimeMillis()
+        if (request !is EntryRequest.New) return EntryDraft(startTime = now)
+        val timed = request.kind in setOf(EntryKind.BREASTFEED, EntryKind.COMBO, EntryKind.PUMP, EntryKind.SLEEP)
+        return EntryDraft(
+            startTime = now,
+            startTimeSet = !timed,
+            milestoneKey = request.milestone?.key,
+            milestoneTitle = request.milestone?.title.orEmpty(),
+        )
+    }
+}

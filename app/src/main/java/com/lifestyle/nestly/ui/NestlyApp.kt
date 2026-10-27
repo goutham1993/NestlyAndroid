@@ -64,6 +64,7 @@ import com.lifestyle.nestly.ui.tabs.GuidesTab
 import com.lifestyle.nestly.ui.trends.TrendsTab
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.units.LocalUnitPrefs
+import com.lifestyle.nestly.data.supabase.DataErrors
 import com.lifestyle.nestly.data.units.UnitPrefs
 
 object Routes {
@@ -100,6 +101,7 @@ fun NestlyApp(
     val authState by authViewModel.state.collectAsStateWithLifecycle()
     val authProfiles by authViewModel.profiles.collectAsStateWithLifecycle()
     val authHasFamily by authViewModel.hasFamily.collectAsStateWithLifecycle()
+    val dataError by DataErrors.message.collectAsStateWithLifecycle()
     val units by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
 
     when (authState) {
@@ -118,7 +120,16 @@ fun NestlyApp(
                 return
             }
             if (profiles.isEmpty()) {
-                com.lifestyle.nestly.ui.auth.OnboardingScreen(authViewModel, hasFamily = authHasFamily)
+                // An empty list only means "needs onboarding" if the fetch
+                // actually succeeded. If it failed (e.g. the onStart refetch
+                // raced an expired token after a warm resume), show a retry
+                // instead of bouncing an existing family into onboarding.
+                val error = dataError
+                if (error != null) {
+                    com.lifestyle.nestly.ui.auth.ErrorScreen(error) { DataErrors.retry() }
+                } else {
+                    com.lifestyle.nestly.ui.auth.OnboardingScreen(authViewModel, hasFamily = authHasFamily)
+                }
                 return
             }
         }

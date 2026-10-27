@@ -2,4 +2,6 @@
     <string name="app_name">Nestly</string>
     <string name="quick_log_widget_description">Quick log Bottle, Diaper, Sleep, or Pump</string>
     <string name="quick_log_widget_label">Nestly Quick Log</string>
+    <string name="nightstand_dream_label">Nestly Nightstand</string>
+    <string name="nightstand_dream_description">Shows the time and when the next feed is due while charging</string>
 </resources>

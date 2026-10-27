@@ -77,7 +77,11 @@ fun HistoryTab(
             .fillMaxSize()
             .statusBarsPadding(),
     ) {
-        ProfileHeader(data?.profile?.name ?: "Nestly", Format.headerDate(System.currentTimeMillis())) {
+        ProfileHeader(
+            name = data?.profile?.name ?: "Nestly",
+            dateText = Format.headerDate(System.currentTimeMillis()),
+            ageText = data?.profile?.birthDate?.let { Format.age(it) },
+        ) {
             HeaderIconButton(Icons.Outlined.Tune, "Filters", onClick = { showFilters = true }, badge = filters.size)
             Box {
                 HeaderIconButton(Icons.Outlined.MoreHoriz, "More", onClick = { showMenu = true })

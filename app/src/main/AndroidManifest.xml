@@ -25,6 +25,22 @@
             </intent-filter>
         </activity>
 
+        <service
+            android:name=".dream.NestlyDreamService"
+            android:description="@string/nightstand_dream_description"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/nightstand_dream_label"
+            android:permission="android.permission.BIND_DREAM_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.dreams.DreamService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.dream"
+                android:resource="@xml/nestly_dream" />
+        </service>
+
         <receiver
             android:name=".widget.NestlyQuickLogWidgetReceiver"
             android:exported="true"

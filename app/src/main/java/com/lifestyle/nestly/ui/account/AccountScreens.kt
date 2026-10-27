@@ -53,7 +53,6 @@ import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
 import java.time.Instant
 import java.time.LocalDate
-import java.time.Period
 import java.time.ZoneId
 
 @Composable
@@ -79,15 +78,6 @@ fun AccountTab(navigate: (String) -> Unit) {
     }
 }
 
-/** "4m 3w 6d" */
-fun shortAge(birthDate: LocalDate, today: LocalDate = LocalDate.now()): String {
-    val period = Period.between(birthDate, today)
-    val months = period.toTotalMonths()
-    val weeks = period.days / 7
-    val days = period.days % 7
-    return "${months}m ${weeks}w ${days}d"
-}
-
 @Composable
 fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
     val profiles by appViewModel.profiles.collectAsStateWithLifecycle()
@@ -104,7 +94,7 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                 MenuRow(
                     child.name,
                     subtitle = listOfNotNull(
-                        child.birthDate?.let { "Age ${shortAge(it)}" },
+                        child.birthDate?.let { Format.age(it) },
                         "Tap to edit",
                     ).joinToString(" · "),
                     onClick = { editingChild = child },
@@ -264,7 +254,8 @@ private fun EditChildDialog(
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
-    val container = LocalContext.current.appContainer
+    val context = LocalContext.current
+    val container = context.appContainer
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val defaultBottleMl by container.preferences.defaultBottleMl.collectAsStateWithLifecycle(initialValue = null)
     val unitPrefs by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
@@ -281,6 +272,28 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
         MenuRow("Email & password", onClick = { navigate(Routes.EMAIL) })
         MenuRow("Units", onClick = { navigate(Routes.UNITS) })
         MenuRow("Communication preferences", onClick = { navigate(Routes.COMMUNICATION) })
+
+        SectionHeading("Nightstand")
+        MenuRow(
+            "Nightstand Mode",
+            subtitle = "Show the clock and next feed while this device is charging",
+            serif = false,
+            onClick = {
+                // Android only lets the user pick the active screen saver;
+                // deep-link there, falling back to Display settings.
+                val dreamSettings = android.content.Intent(android.provider.Settings.ACTION_DREAM_SETTINGS)
+                val fallback = android.content.Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
+                runCatching { context.startActivity(dreamSettings) }
+                    .onFailure { runCatching { context.startActivity(fallback) } }
+            },
+        )
+        Text(
+            "Select Nestly Nightstand as your screen saver, then set it to start while charging. " +
+                "From it you can log a feed with your default bottle amount in one tap, without unlocking.",
+            style = NestlyType.Small,
+            color = NestlyColors.TextSecondary,
+            modifier = Modifier.padding(20.dp),
+        )
 
         SectionHeading("Feeding")
         MenuRow(

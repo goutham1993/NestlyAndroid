@@ -4,6 +4,7 @@ import com.lifestyle.nestly.data.units.UnitPrefs
 import com.lifestyle.nestly.data.units.Units
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -46,6 +47,33 @@ object Format {
 
     /** "Oct 1, 2026" */
     fun date(date: LocalDate): String = dayYearFormat.format(date)
+
+    /**
+     * Age since [birthDate]: "Born today", "3 days old", "2 weeks, 3 days old",
+     * "4 months, 2 weeks old", "1 year, 3 months old". Null if [birthDate] is
+     * in the future. Weeks/days are only shown while under a year old.
+     */
+    fun age(birthDate: LocalDate, today: LocalDate = LocalDate.now()): String? {
+        if (birthDate.isAfter(today)) return null
+        val period = Period.between(birthDate, today)
+        fun unit(value: Int, name: String) = "$value $name${if (value == 1) "" else "s"}"
+        return when {
+            period.years > 0 -> listOfNotNull(
+                unit(period.years, "year"),
+                period.months.takeIf { it > 0 }?.let { unit(it, "month") },
+            ).joinToString(", ") + " old"
+            period.months > 0 -> listOfNotNull(
+                unit(period.months, "month"),
+                (period.days / 7).takeIf { it > 0 }?.let { unit(it, "week") },
+            ).joinToString(", ") + " old"
+            period.days >= 7 -> listOfNotNull(
+                unit(period.days / 7, "week"),
+                (period.days % 7).takeIf { it > 0 }?.let { unit(it, "day") },
+            ).joinToString(", ") + " old"
+            period.days > 0 -> "${unit(period.days, "day")} old"
+            else -> "Born today"
+        }
+    }
 
     /** "1h 53m ago", "5m ago", "Just now", "3d ago" */
     fun ago(epochMs: Long, now: Long): String {

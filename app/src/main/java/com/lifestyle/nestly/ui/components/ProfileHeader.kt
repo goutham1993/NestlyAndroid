@@ -52,11 +52,12 @@ fun BabyAvatar(modifier: Modifier = Modifier) {
     }
 }
 
-/** Avatar, child name and date, with small outlined action buttons on the right. */
+/** Avatar, child name, age (when known) and date, with small outlined action buttons on the right. */
 @Composable
 fun ProfileHeader(
     name: String,
     dateText: String,
+    ageText: String? = null,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -70,7 +71,10 @@ fun ProfileHeader(
         Spacer(Modifier.width(18.dp))
         Column(Modifier.weight(1f)) {
             Text(name, style = NestlyType.Display, color = NestlyColors.TextPrimary, maxLines = 1)
-            Text(dateText, style = NestlyType.Small, color = NestlyColors.TextSecondary)
+            if (!ageText.isNullOrBlank()) {
+                Text(ageText, style = NestlyType.Small, color = NestlyColors.TextSecondary, maxLines = 1)
+            }
+            Text(dateText, style = NestlyType.Small, color = NestlyColors.TextSecondary, maxLines = 1)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }

@@ -57,7 +57,11 @@ fun TrendsTab(appViewModel: AppViewModel) {
             .fillMaxSize()
             .statusBarsPadding(),
     ) {
-        ProfileHeader(data?.profile?.name ?: profile?.name ?: "Nestly", Format.headerDate(System.currentTimeMillis()))
+        ProfileHeader(
+            name = data?.profile?.name ?: profile?.name ?: "Nestly",
+            dateText = Format.headerDate(System.currentTimeMillis()),
+            ageText = (data?.profile ?: profile)?.birthDate?.let { Format.age(it) },
+        )
         val trends = data
         if (trends == null) return@Column
 

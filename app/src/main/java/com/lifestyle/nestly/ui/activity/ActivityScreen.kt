@@ -93,7 +93,13 @@ fun ActivityTab(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 item {
-                    ProfileHeader(dashboard?.profile?.name.orEmpty(), Format.headerDate(now)) {
+                    ProfileHeader(
+                        name = dashboard?.profile?.name.orEmpty(),
+                        dateText = Format.headerDate(now),
+                        ageText = dashboard?.profile?.birthDate?.let { birthDate ->
+                            Format.age(birthDate, Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate())
+                        },
+                    ) {
                         HeaderIconButton(Icons.Outlined.Subject, "Summary", onClick = { showSummary = true })
                         Box {
                             HeaderIconButton(Icons.Outlined.MoreHoriz, "More", onClick = { showMenu = true })

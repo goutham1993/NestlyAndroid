@@ -60,6 +60,7 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="com.lifestyle.nestly.REMINDER_FIRE" />
+                <action android:name="com.lifestyle.nestly.APPOINTMENT_FIRE" />
             </intent-filter>
         </receiver>
     </application>

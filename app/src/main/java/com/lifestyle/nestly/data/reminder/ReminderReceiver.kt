@@ -19,6 +19,16 @@ class ReminderReceiver : BroadcastReceiver() {
                         ReminderNotifications.ensureChannel(context)
                         context.appContainer.scheduler.rescheduleAll()
                     }
+                    ReminderScheduler.ACTION_APPOINTMENT_FIRE -> {
+                        val id = intent.getStringExtra(ReminderScheduler.EXTRA_APPOINTMENT_ID) ?: return@launch
+                        val appointment = context.appContainer.appointments.getById(id) ?: return@launch
+                        if (appointment.reminderLead ==
+                            com.lifestyle.nestly.data.model.AppointmentReminderLead.NONE
+                        ) return@launch
+                        // At-time alarms fire a hair after startsAt; allow a short grace window.
+                        if (appointment.startsAt < System.currentTimeMillis() - 5 * 60_000L) return@launch
+                        ReminderNotifications.showAppointment(context, appointment)
+                    }
                     ReminderScheduler.ACTION_FIRE -> {
                         val id = intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_ID) ?: return@launch
                         val kindName = intent.getStringExtra(ReminderScheduler.EXTRA_KIND) ?: return@launch

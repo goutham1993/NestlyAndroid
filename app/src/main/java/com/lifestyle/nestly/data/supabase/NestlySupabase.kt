@@ -28,6 +28,7 @@ object DataErrors {
         RefreshBus.invalidate(
             RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
             RefreshBus.FAMILY, RefreshBus.REMINDER,
+            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
         )
     }
 }
@@ -72,4 +73,6 @@ object RefreshBus {
     const val CAREGIVER = "caregiver"
     const val FAMILY = "family"
     const val REMINDER = "reminder"
+    const val APPOINTMENT = "appointment"
+    const val APPOINTMENT_QUESTION = "appointment_question"
 }

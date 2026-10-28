@@ -56,6 +56,8 @@ import com.lifestyle.nestly.ui.entry.EntryRequest
 import com.lifestyle.nestly.ui.entry.EntrySheetHost
 import com.lifestyle.nestly.ui.importer.ImportScreen
 import com.lifestyle.nestly.ui.importer.ImportViewModel
+import com.lifestyle.nestly.ui.appointments.AppointmentDetailScreen
+import com.lifestyle.nestly.ui.appointments.AppointmentsScreen
 import com.lifestyle.nestly.ui.milestones.MilestonesScreen
 import com.lifestyle.nestly.ui.history.HistoryTab
 import com.lifestyle.nestly.ui.reminders.RemindersScreen
@@ -72,6 +74,10 @@ object Routes {
     const val EDIT_ACTIVITIES = "editActivities"
     const val MILESTONES = "milestones"
     const val REMINDERS = "reminders"
+    const val APPOINTMENTS = "appointments"
+    const val APPOINTMENT_NEW = "appointments/new"
+    const val APPOINTMENT_DETAIL = "appointments/{id}"
+    fun appointmentDetail(id: String) = "appointments/$id"
     const val FAMILY = "family"
     const val SETTINGS = "settings"
     const val UNITS = "units"
@@ -93,6 +99,8 @@ enum class Tab(val label: String, val icon: ImageVector) {
 fun NestlyApp(
     pendingEntryKind: EntryKind? = null,
     onPendingEntryConsumed: () -> Unit = {},
+    pendingAppointmentId: String? = null,
+    onPendingAppointmentConsumed: () -> Unit = {},
 ) {
     val container = LocalContext.current.appContainer
     val appViewModel: AppViewModel = viewModel { AppViewModel(container) }
@@ -151,6 +159,12 @@ fun NestlyApp(
         onPendingEntryConsumed()
     }
 
+    LaunchedEffect(pendingAppointmentId) {
+        val id = pendingAppointmentId ?: return@LaunchedEffect
+        nav.navigate(Routes.appointmentDetail(id))
+        onPendingAppointmentConsumed()
+    }
+
     CompositionLocalProvider(LocalUnitPrefs provides units) {
         Box(
             Modifier
@@ -172,6 +186,20 @@ fun NestlyApp(
                 composable(Routes.EDIT_ACTIVITIES) { EditActivitiesScreen(onBack = back) }
                 composable(Routes.MILESTONES) { MilestonesScreen(onBack = back, onOpenEntry = openEntry) }
                 composable(Routes.REMINDERS) { RemindersScreen(onBack = back) }
+                composable(Routes.APPOINTMENTS) {
+                    AppointmentsScreen(
+                        onBack = back,
+                        onOpenAppointment = { nav.navigate(Routes.appointmentDetail(it)) },
+                        onAddAppointment = { nav.navigate(Routes.APPOINTMENT_NEW) },
+                    )
+                }
+                composable(Routes.APPOINTMENT_NEW) { AppointmentDetailScreen(appointmentId = null, onBack = back) }
+                composable(Routes.APPOINTMENT_DETAIL) { backStack ->
+                    AppointmentDetailScreen(
+                        appointmentId = backStack.arguments?.getString("id"),
+                        onBack = back,
+                    )
+                }
                 composable(Routes.FAMILY) { FamilyScreen(appViewModel, onBack = back) }
                 composable(Routes.SETTINGS) { SettingsScreen(onBack = back, navigate = { nav.navigate(it) }) }
                 composable(Routes.UNITS) { UnitsScreen(onBack = back) }

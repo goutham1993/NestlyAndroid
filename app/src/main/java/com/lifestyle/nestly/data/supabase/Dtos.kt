@@ -2,6 +2,9 @@ package com.lifestyle.nestly.data.supabase
 
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.AppointmentEntity
+import com.lifestyle.nestly.data.model.AppointmentQuestionEntity
+import com.lifestyle.nestly.data.model.AppointmentReminderLead
 import com.lifestyle.nestly.data.model.BabyFirstDetails
 import com.lifestyle.nestly.data.model.BottleDetails
 import com.lifestyle.nestly.data.model.BreastSide
@@ -263,6 +266,98 @@ fun ActivityEntity.toDto() = ActivityDto(
     vaccineVaccines = vaccine?.vaccines,
     photoPath = photoUri,
     comboGroupId = comboGroupId,
+    createdAt = createdAt.toIso(),
+    updatedAt = updatedAt.toIso(),
+    deletedAt = deletedAt?.toIso(),
+    version = version,
+)
+
+@Serializable
+data class AppointmentDto(
+    val id: String,
+    @SerialName("family_id") val familyId: String,
+    @SerialName("profile_id") val profileId: String,
+    val title: String,
+    @SerialName("doctor_name") val doctorName: String? = null,
+    val location: String? = null,
+    @SerialName("starts_at") val startsAt: String,
+    @SerialName("time_zone") val timeZone: String,
+    val notes: String? = null,
+    @SerialName("reminder_lead_minutes") val reminderLeadMinutes: Int? = null,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    val version: Int = 1,
+) {
+    fun toEntity() = AppointmentEntity(
+        id = id,
+        familyId = familyId,
+        profileId = profileId,
+        title = title,
+        doctorName = doctorName,
+        location = location,
+        startsAt = startsAt.isoToMillis(),
+        timeZone = timeZone,
+        notes = notes,
+        reminderLead = AppointmentReminderLead.fromLeadMinutes(reminderLeadMinutes),
+        createdAt = createdAt.isoToMillis(),
+        updatedAt = updatedAt.isoToMillis(),
+        deletedAt = deletedAt?.isoToMillis(),
+        version = version,
+    )
+}
+
+fun AppointmentEntity.toDto() = AppointmentDto(
+    id = id,
+    familyId = familyId,
+    profileId = profileId,
+    title = title,
+    doctorName = doctorName,
+    location = location,
+    startsAt = startsAt.toIso(),
+    timeZone = timeZone,
+    notes = notes,
+    reminderLeadMinutes = reminderLead.leadMinutes,
+    createdAt = createdAt.toIso(),
+    updatedAt = updatedAt.toIso(),
+    deletedAt = deletedAt?.toIso(),
+    version = version,
+)
+
+@Serializable
+data class AppointmentQuestionDto(
+    val id: String,
+    @SerialName("appointment_id") val appointmentId: String,
+    @SerialName("family_id") val familyId: String,
+    val text: String,
+    @SerialName("is_done") val isDone: Boolean = false,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    val version: Int = 1,
+) {
+    fun toEntity() = AppointmentQuestionEntity(
+        id = id,
+        appointmentId = appointmentId,
+        familyId = familyId,
+        text = text,
+        isDone = isDone,
+        sortOrder = sortOrder,
+        createdAt = createdAt.isoToMillis(),
+        updatedAt = updatedAt.isoToMillis(),
+        deletedAt = deletedAt?.isoToMillis(),
+        version = version,
+    )
+}
+
+fun AppointmentQuestionEntity.toDto() = AppointmentQuestionDto(
+    id = id,
+    appointmentId = appointmentId,
+    familyId = familyId,
+    text = text,
+    isDone = isDone,
+    sortOrder = sortOrder,
     createdAt = createdAt.toIso(),
     updatedAt = updatedAt.toIso(),
     deletedAt = deletedAt?.toIso(),

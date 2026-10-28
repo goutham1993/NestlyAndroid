@@ -33,7 +33,7 @@ class RealtimeManager(
                 val channel = client.channel("nestly-$familyId")
                 val tables = listOf(
                     RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
-                    RefreshBus.REMINDER,
+                    RefreshBus.REMINDER, RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
                 )
                 tables.forEach { table ->
                     channel.postgresChangeFlow<PostgresAction>(schema = "public") {
@@ -66,6 +66,7 @@ class RealtimeManager(
         RefreshBus.invalidate(
             RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
             RefreshBus.FAMILY, RefreshBus.REMINDER,
+            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
         )
     }
 }

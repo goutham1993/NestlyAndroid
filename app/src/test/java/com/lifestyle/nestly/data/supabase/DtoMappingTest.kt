@@ -51,6 +51,65 @@ class DtoMappingTest {
     }
 
     @Test
+    fun appointmentRoundTripsThroughDto() {
+        val original = com.lifestyle.nestly.data.model.AppointmentEntity(
+            id = "11111111-1111-1111-1111-111111111111",
+            familyId = "22222222-2222-2222-2222-222222222222",
+            profileId = "33333333-3333-3333-3333-333333333333",
+            title = "2-month checkup",
+            doctorName = "Dr. Patel",
+            location = "Sunny Pediatrics",
+            startsAt = 1_700_000_000_000L,
+            timeZone = "America/Chicago",
+            notes = "Bring vaccine record",
+            reminderLead = com.lifestyle.nestly.data.model.AppointmentReminderLead.ONE_DAY,
+            createdAt = 1_700_000_000_000L,
+            updatedAt = 1_700_000_100_000L,
+            version = 2,
+        )
+        assertEquals(original, original.toDto().toEntity())
+        assertEquals(1440, original.toDto().reminderLeadMinutes)
+    }
+
+    @Test
+    fun appointmentNullableFieldsStayNull() {
+        val dto = com.lifestyle.nestly.data.model.AppointmentEntity(
+            id = "11111111-1111-1111-1111-111111111111",
+            familyId = "22222222-2222-2222-2222-222222222222",
+            profileId = "33333333-3333-3333-3333-333333333333",
+            title = "Checkup",
+            startsAt = 1_700_000_000_000L,
+            timeZone = "UTC",
+            createdAt = 1_700_000_000_000L,
+            updatedAt = 1_700_000_000_000L,
+        ).toDto()
+        assertNull(dto.doctorName)
+        assertNull(dto.location)
+        assertNull(dto.notes)
+        assertNull(dto.reminderLeadMinutes)
+        assertEquals(
+            com.lifestyle.nestly.data.model.AppointmentReminderLead.NONE,
+            dto.toEntity().reminderLead,
+        )
+    }
+
+    @Test
+    fun appointmentQuestionRoundTripsThroughDto() {
+        val original = com.lifestyle.nestly.data.model.AppointmentQuestionEntity(
+            id = "11111111-1111-1111-1111-111111111111",
+            appointmentId = "22222222-2222-2222-2222-222222222222",
+            familyId = "33333333-3333-3333-3333-333333333333",
+            text = "Is this rash normal?",
+            isDone = true,
+            sortOrder = 2,
+            createdAt = 1_700_000_000_000L,
+            updatedAt = 1_700_000_100_000L,
+            version = 3,
+        )
+        assertEquals(original, original.toDto().toEntity())
+    }
+
+    @Test
     fun isoConversionRoundTrips() {
         val millis = 1_700_000_123_000L
         assertEquals(millis, millis.toIso().isoToMillis())

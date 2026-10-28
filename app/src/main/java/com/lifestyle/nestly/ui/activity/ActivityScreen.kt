@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Subject
@@ -114,6 +115,14 @@ fun ActivityTab(
                                     onClick = {
                                         showMenu = false
                                         navigate(Routes.REMINDERS)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Doctor Appointments", style = NestlyType.RowLabel) },
+                                    leadingIcon = { Icon(Icons.Outlined.CalendarMonth, null, tint = NestlyColors.TextPrimary) },
+                                    onClick = {
+                                        showMenu = false
+                                        navigate(Routes.APPOINTMENTS)
                                     },
                                 )
                                 DropdownMenuItem(

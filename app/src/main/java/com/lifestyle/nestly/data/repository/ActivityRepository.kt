@@ -25,7 +25,7 @@ class ActivityRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun timeline(familyId: String, profileId: String, limit: Int = 100): Flow<List<ActivityEntity>> =
-        refetchFlow(RefreshBus.ACTIVITY, emptyList()) {
+        refetchFlow(RefreshBus.ACTIVITY) {
             client.from("activity").select {
                 filter {
                     eq("family_id", familyId)
@@ -41,7 +41,7 @@ class ActivityRepository(
         }
 
     fun range(familyId: String, profileId: String, fromTime: Long, toTime: Long): Flow<List<ActivityEntity>> =
-        refetchFlow(RefreshBus.ACTIVITY, emptyList()) {
+        refetchFlow(RefreshBus.ACTIVITY) {
             fetchRange(familyId, profileId, fromTime, toTime)
         }
 
@@ -61,13 +61,13 @@ class ActivityRepository(
         }.decodeList<ActivityDto>().map { it.toEntity() }
 
     fun latest(familyId: String, profileId: String, type: ActivityType): Flow<ActivityEntity?> =
-        refetchFlow(RefreshBus.ACTIVITY, null) { fetchLatest(familyId, profileId, listOf(type)) }
+        refetchFlow(RefreshBus.ACTIVITY) { fetchLatest(familyId, profileId, listOf(type)) }
 
     fun latestOf(familyId: String, profileId: String, types: List<ActivityType>): Flow<ActivityEntity?> =
-        refetchFlow(RefreshBus.ACTIVITY, null) { fetchLatest(familyId, profileId, types) }
+        refetchFlow(RefreshBus.ACTIVITY) { fetchLatest(familyId, profileId, types) }
 
     fun allOf(familyId: String, profileId: String, types: List<ActivityType>): Flow<List<ActivityEntity>> =
-        refetchFlow(RefreshBus.ACTIVITY, emptyList()) {
+        refetchFlow(RefreshBus.ACTIVITY) {
             client.from("activity").select {
                 filter {
                     eq("family_id", familyId)
@@ -88,7 +88,7 @@ class ActivityRepository(
         fromTime: Long,
         toTime: Long,
         zone: ZoneId = ZoneId.systemDefault(),
-    ): Flow<List<DailyVolume>> = refetchFlow(RefreshBus.ACTIVITY, emptyList()) {
+    ): Flow<List<DailyVolume>> = refetchFlow(RefreshBus.ACTIVITY) {
         val rows = client.from("activity").select {
             filter {
                 eq("profile_id", profileId)
@@ -109,7 +109,7 @@ class ActivityRepository(
         fromTime: Long,
         toTime: Long,
         zone: ZoneId = ZoneId.systemDefault(),
-    ): Flow<List<DailyVolume>> = refetchFlow(RefreshBus.ACTIVITY, emptyList()) {
+    ): Flow<List<DailyVolume>> = refetchFlow(RefreshBus.ACTIVITY) {
         val rows = client.from("activity").select {
             filter {
                 eq("family_id", familyId)
@@ -125,7 +125,7 @@ class ActivityRepository(
             .sortedBy { it.day }
     }
 
-    fun countsByType(): Flow<List<TypeCount>> = refetchFlow(RefreshBus.ACTIVITY, emptyList()) { fetchCountsByType() }
+    fun countsByType(): Flow<List<TypeCount>> = refetchFlow(RefreshBus.ACTIVITY) { fetchCountsByType() }
 
     suspend fun fetchCountsByType(): List<TypeCount> =
         client.from("activity").select(columns = io.github.jan.supabase.postgrest.query.Columns.list("type")) {

@@ -11,17 +11,19 @@ import kotlinx.coroutines.flow.flow
  * table's RefreshBus tick changes (Realtime event, local write, reconnect,
  * manual retry). Failures are reported to [DataErrors].
  *
- * A failed refetch must never masquerade as "the table is empty": callers
+ * A failed fetch must never masquerade as "the table is empty": callers
  * (notably the signed-in gate in NestlyApp) treat an empty profile list as
- * "no child yet" and route to onboarding. So once a fetch has succeeded, a
- * later failure re-emits the last good value instead of [fallback]. This
- * happens on ordinary warm resumes — [com.lifestyle.nestly.MainActivity]
- * calls refreshAll() from onStart, and that refetch can race an expired
- * access token / still-restoring network and fail even though nothing was
- * deleted. [fallback] is only emitted when no fetch has succeeded yet.
+ * "no child yet" and route to onboarding. So a failed refetch re-emits the
+ * last good value, and a failed *first* fetch emits nothing at all — the
+ * collector simply stays in its loading state until a fetch succeeds or the
+ * user retries from the error screen. Emitting a fallback empty list here
+ * was the cause of the onboarding flash on cold start: the first fetch races
+ * session restoration, and an unauthenticated PostgREST request either fails
+ * or (via RLS) succeeds with zero rows, neither of which means the account
+ * has no children.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun <T> refetchFlow(table: String, fallback: T, fetch: suspend () -> T): Flow<T> = flow {
+fun <T> refetchFlow(table: String, fetch: suspend () -> T): Flow<T> = flow {
     // Per-collection last-good value (declared inside the flow builder so
     // independent collectors don't share it).
     var lastGood: T? = null
@@ -38,7 +40,12 @@ fun <T> refetchFlow(table: String, fallback: T, fetch: suspend () -> T): Flow<T>
                 throw e
             } catch (e: Exception) {
                 DataErrors.report(e)
-                emit(if (hasLastGood) lastGood ?: fallback else fallback)
+                if (hasLastGood) {
+                    @Suppress("UNCHECKED_CAST")
+                    emit(lastGood as T)
+                }
+                // No last good value: emit nothing. The caller remains in
+                // its loading state and DataErrors drives the error UI.
             }
         }
     }.collect { emit(it) }

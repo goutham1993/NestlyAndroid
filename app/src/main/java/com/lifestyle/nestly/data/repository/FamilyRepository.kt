@@ -18,12 +18,14 @@ import com.lifestyle.nestly.data.supabase.toDto
 import com.lifestyle.nestly.data.supabase.toIso
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -39,17 +41,35 @@ class FamilyRepository(
 ) {
     private val authUserId: String? get() = client.auth.currentSessionOrNull()?.user?.id
 
-    val families: Flow<List<FamilyEntity>> = refetchFlow(RefreshBus.FAMILY, emptyList()) {
-        client.from("family").select {
-            filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
-        }.decodeList<FamilyDto>().map { it.toEntity() }
+    /**
+     * Family data is only meaningful with a user JWT: before the stored
+     * session is restored, PostgREST answers as anon and RLS returns zero
+     * rows, which looks exactly like "this account has no family yet". Gate
+     * on the session so no fetch runs (and no empty result is ever produced)
+     * until authenticated, and refetch fresh the moment it is. While signed
+     * out / restoring, these flows emit nothing, so collectors stay in their
+     * loading state instead of flashing onboarding on cold start.
+     */
+    private fun <T> authenticatedOnly(flow: () -> Flow<T>): Flow<T> =
+        client.auth.sessionStatus.flatMapLatest { status ->
+            if (status is SessionStatus.Authenticated) flow() else emptyFlow()
+        }
+
+    val families: Flow<List<FamilyEntity>> = authenticatedOnly {
+        refetchFlow(RefreshBus.FAMILY) {
+            client.from("family").select {
+                filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
+            }.decodeList<FamilyDto>().map { it.toEntity() }
+        }
     }
 
-    val profiles: Flow<List<ProfileEntity>> = refetchFlow(RefreshBus.PROFILE, emptyList()) {
-        client.from("profile").select {
-            filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
-            order("created_at", Order.ASCENDING)
-        }.decodeList<ProfileDto>().map { it.toEntity() }
+    val profiles: Flow<List<ProfileEntity>> = authenticatedOnly {
+        refetchFlow(RefreshBus.PROFILE) {
+            client.from("profile").select {
+                filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
+                order("created_at", Order.ASCENDING)
+            }.decodeList<ProfileDto>().map { it.toEntity() }
+        }
     }
 
     /** The selected child, falling back to the first profile when nothing is selected yet. */
@@ -58,7 +78,7 @@ class FamilyRepository(
 
     val caregivers: Flow<List<CaregiverEntity>> = selectedProfile.flatMapLatest { profile ->
         if (profile == null) flowOf(emptyList())
-        else refetchFlow(RefreshBus.CAREGIVER, emptyList()) {
+        else refetchFlow(RefreshBus.CAREGIVER) {
             client.from("caregiver").select {
                 filter {
                     eq("family_id", profile.familyId)

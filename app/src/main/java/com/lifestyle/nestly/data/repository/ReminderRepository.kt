@@ -21,7 +21,7 @@ class ReminderRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun observeForProfile(familyId: String, profileId: String): Flow<List<ReminderEntity>> =
-        refetchFlow(RefreshBus.REMINDER, emptyList()) { fetchForProfile(familyId, profileId) }
+        refetchFlow(RefreshBus.REMINDER) { fetchForProfile(familyId, profileId) }
 
     suspend fun fetchForProfile(familyId: String, profileId: String): List<ReminderEntity> =
         fetchAll().filter { reminder ->

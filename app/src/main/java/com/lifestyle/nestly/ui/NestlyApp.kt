@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Flare
@@ -60,7 +59,6 @@ import com.lifestyle.nestly.ui.importer.ImportViewModel
 import com.lifestyle.nestly.ui.milestones.MilestonesScreen
 import com.lifestyle.nestly.ui.history.HistoryTab
 import com.lifestyle.nestly.ui.reminders.RemindersScreen
-import com.lifestyle.nestly.ui.tabs.GuidesTab
 import com.lifestyle.nestly.ui.trends.TrendsTab
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.units.LocalUnitPrefs
@@ -86,7 +84,6 @@ enum class Tab(val label: String, val icon: ImageVector) {
     ACTIVITY("Activity", Icons.Outlined.Flare),
     HISTORY("History", Icons.Outlined.CalendarMonth),
     TRENDS("Trends", Icons.AutoMirrored.Outlined.ShowChart),
-    GUIDES("Guides", Icons.AutoMirrored.Outlined.MenuBook),
     ACCOUNT("Account", Icons.Outlined.VolunteerActivism),
 }
 
@@ -116,20 +113,27 @@ fun NestlyApp(
         com.lifestyle.nestly.ui.auth.AuthState.SIGNED_IN -> {
             val profiles = authProfiles
             if (profiles == null) {
-                com.lifestyle.nestly.ui.auth.LoadingScreen("Loading your family…")
-                return
-            }
-            if (profiles.isEmpty()) {
-                // An empty list only means "needs onboarding" if the fetch
-                // actually succeeded. If it failed (e.g. the onStart refetch
-                // raced an expired token after a warm resume), show a retry
-                // instead of bouncing an existing family into onboarding.
+                // No authenticated fetch has completed yet. A reported error
+                // means it failed (e.g. offline on cold start) — offer a
+                // retry rather than sitting on a spinner forever.
                 val error = dataError
                 if (error != null) {
                     com.lifestyle.nestly.ui.auth.ErrorScreen(error) { DataErrors.retry() }
                 } else {
-                    com.lifestyle.nestly.ui.auth.OnboardingScreen(authViewModel, hasFamily = authHasFamily)
+                    com.lifestyle.nestly.ui.auth.LoadingScreen("Loading your family…")
                 }
+                return
+            }
+            if (profiles.isEmpty()) {
+                // An empty list is now trustworthy: it can only be emitted by
+                // a fetch that succeeded as the signed-in user, never by a
+                // failed or pre-session request. Still wait until hasFamily
+                // is known so onboarding opens on the right step.
+                if (authHasFamily == null) {
+                    com.lifestyle.nestly.ui.auth.LoadingScreen("Loading your family…")
+                    return
+                }
+                com.lifestyle.nestly.ui.auth.OnboardingScreen(authViewModel, hasFamily = authHasFamily ?: false)
                 return
             }
         }
@@ -182,7 +186,11 @@ fun NestlyApp(
 
 @Composable
 private fun MainTabs(appViewModel: AppViewModel, openEntry: (EntryRequest) -> Unit, navigate: (String) -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(Tab.ACTIVITY) }
+    // Stored as a name so a tab selected before an update (e.g. the removed
+    // Guides tab) falls back to Activity instead of failing to restore.
+    var tabName by rememberSaveable { mutableStateOf(Tab.ACTIVITY.name) }
+    val tab = Tab.entries.find { it.name == tabName } ?: Tab.ACTIVITY
+    val selectTab: (Tab) -> Unit = { tabName = it.name }
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
             when (tab) {
@@ -190,15 +198,14 @@ private fun MainTabs(appViewModel: AppViewModel, openEntry: (EntryRequest) -> Un
                     appViewModel = appViewModel,
                     onOpenEntry = openEntry,
                     navigate = navigate,
-                    onShowHistory = { tab = Tab.HISTORY },
+                    onShowHistory = { selectTab(Tab.HISTORY) },
                 )
                 Tab.HISTORY -> HistoryTab(appViewModel, onOpenEntry = openEntry, navigate = navigate)
                 Tab.TRENDS -> TrendsTab(appViewModel)
-                Tab.GUIDES -> GuidesTab()
                 Tab.ACCOUNT -> AccountTab(navigate)
             }
         }
-        BottomBar(tab, onSelect = { tab = it })
+        BottomBar(tab, onSelect = selectTab)
     }
 }
 

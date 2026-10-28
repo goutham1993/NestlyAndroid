@@ -3,11 +3,15 @@ package com.lifestyle.nestly.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifestyle.nestly.AppContainer
+import com.lifestyle.nestly.data.model.ProfileEntity
 import io.github.jan.supabase.auth.status.SessionStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,13 +34,32 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         .map { container.auth.currentEmail }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    /** Profiles visible to this account; null while the first fetch is in flight. */
-    val profiles = container.family.profiles
+    /**
+     * Profiles visible to this account; null until a fetch has completed
+     * *as the signed-in user*. Resetting to null whenever the session is not
+     * authenticated (cold-start restore, token refresh, sign-out) ensures a
+     * result produced before/without a session can never reach the
+     * onboarding gate in NestlyApp — that stale empty result was the
+     * onboarding flash seen before the home screen appeared.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val profiles: StateFlow<List<ProfileEntity>?> = container.auth.sessionStatus
+        .flatMapLatest { status ->
+            if (status is SessionStatus.Authenticated) container.family.profiles else flowOf(null)
+        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    val hasFamily: StateFlow<Boolean> = container.family.families
-        .map { it.isNotEmpty() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    /** Null until the families fetch has completed as the signed-in user. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val hasFamily: StateFlow<Boolean?> = container.auth.sessionStatus
+        .flatMapLatest { status ->
+            if (status is SessionStatus.Authenticated) {
+                container.family.families.map { it.isNotEmpty() }
+            } else {
+                flowOf(null)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()

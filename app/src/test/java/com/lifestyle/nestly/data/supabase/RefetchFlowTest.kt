@@ -7,17 +7,18 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RefetchFlowTest {
 
     @Test
-    fun failedRefetchKeepsLastGoodValueInsteadOfFallback() = runTest {
+    fun failedRefetchKeepsLastGoodValueInsteadOfEmittingEmpty() = runTest {
         val table = "profile_test_keep_last"
         var attempt = 0
         val values = async {
-            refetchFlow(table, emptyList<String>()) {
+            refetchFlow(table) {
                 attempt++
                 if (attempt == 2) throw RuntimeException("offline / expired token")
                 listOf("child-$attempt")
@@ -37,18 +38,27 @@ class RefetchFlowTest {
     }
 
     @Test
-    fun failedFirstFetchEmitsFallback() = runTest {
+    fun failedFirstFetchEmitsNothingUntilARefetchSucceeds() = runTest {
         val table = "profile_test_first_fails"
+        var attempt = 0
         val values = async {
-            refetchFlow(table, listOf("fallback")) {
-                throw RuntimeException("offline")
+            refetchFlow(table) {
+                attempt++
+                if (attempt == 1) throw RuntimeException("offline / session not restored yet")
+                listOf("child-$attempt")
             }.take(1).toList()
         }
+        runCurrent() // first fetch fails
+
+        // No successful fetch yet: nothing may be emitted. Emitting an empty
+        // fallback here is what made NestlyApp flash onboarding on cold start
+        // before the real (authenticated) fetch landed.
+        assertFalse(values.isCompleted)
+
+        RefreshBus.invalidate(table) // retry / session restored -> refetch
         runCurrent()
 
-        // No successful fetch yet: fallback is all we have. The UI gate
-        // distinguishes this from a real empty result via DataErrors.
-        assertEquals(listOf(listOf("fallback")), values.await())
+        assertEquals(listOf(listOf("child-2")), values.await())
         DataErrors.clear()
     }
 }

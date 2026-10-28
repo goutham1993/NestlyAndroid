@@ -67,6 +67,8 @@ import com.lifestyle.nestly.data.units.UnitPrefs
 
 object Routes {
     const val MAIN = "main"
+    const val GROWTH = "growth/{metric}"
+    fun growth(metric: com.lifestyle.nestly.data.growth.GrowthMetric) = "growth/${metric.name}"
     const val EDIT_ACTIVITIES = "editActivities"
     const val MILESTONES = "milestones"
     const val REMINDERS = "reminders"
@@ -160,6 +162,12 @@ fun NestlyApp(
             NavHost(nav, startDestination = Routes.MAIN) {
                 composable(Routes.MAIN) {
                     MainTabs(appViewModel, openEntry, navigate = { nav.navigate(it) })
+                }
+                composable(Routes.GROWTH) { backStack ->
+                    val metric = backStack.arguments?.getString("metric")
+                        ?.let { runCatching { com.lifestyle.nestly.data.growth.GrowthMetric.valueOf(it) }.getOrNull() }
+                        ?: com.lifestyle.nestly.data.growth.GrowthMetric.WEIGHT
+                    com.lifestyle.nestly.ui.growth.GrowthScreen(metric, onBack = back, onOpenEntry = openEntry)
                 }
                 composable(Routes.EDIT_ACTIVITIES) { EditActivitiesScreen(onBack = back) }
                 composable(Routes.MILESTONES) { MilestonesScreen(onBack = back, onOpenEntry = openEntry) }

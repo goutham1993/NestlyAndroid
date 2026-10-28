@@ -40,6 +40,7 @@ class CardContext(
     val onFeedPicker: () -> Unit,
     val onShowHistory: () -> Unit,
     val onMilestones: () -> Unit,
+    val onGrowth: (com.lifestyle.nestly.data.growth.GrowthMetric) -> Unit,
 ) {
     fun today(card: CardKind): List<ActivityEntity> =
         data.recent.filter { it.type.card == card && it.startTime >= startOfToday && it.startTime <= now + 60_000 }
@@ -228,7 +229,6 @@ private fun GrowthCard(ctx: CardContext) {
     val height = growth.firstOrNull { it.growth?.heightCm != null }
     val head = growth.firstOrNull { it.growth?.headCm != null }
     val add = { ctx.new(EntryKind.GROWTH) }
-    var showAll by rememberSaveable { mutableStateOf(false) }
     val zone = ZoneId.systemDefault()
     fun dateOf(e: ActivityEntity?) = e?.let { Format.date(Instant.ofEpochMilli(it.startTime).atZone(zone).toLocalDate()) }
 
@@ -236,13 +236,13 @@ private fun GrowthCard(ctx: CardContext) {
         Column {
             Spacer(Modifier.height(8.dp))
             MetricRow(IconKind.WEIGHT, "Weight", dateOf(weight), weight?.growth?.weightKg?.let { Format.weight(it, units) }) {
-                weight?.let(ctx::edit) ?: add()
+                ctx.onGrowth(com.lifestyle.nestly.data.growth.GrowthMetric.WEIGHT)
             }
             MetricRow(IconKind.HEIGHT, "Height", dateOf(height), height?.growth?.heightCm?.let { Format.length(it, units) }) {
-                height?.let(ctx::edit) ?: add()
+                ctx.onGrowth(com.lifestyle.nestly.data.growth.GrowthMetric.HEIGHT)
             }
             MetricRow(IconKind.HEAD, "Head Size", dateOf(head), head?.growth?.headCm?.let { Format.length(it, units) }) {
-                head?.let(ctx::edit) ?: add()
+                ctx.onGrowth(com.lifestyle.nestly.data.growth.GrowthMetric.HEAD)
             }
             val logged = ctx.data.milestones.size
             val latestMilestone = ctx.data.milestones.firstOrNull()
@@ -253,21 +253,6 @@ private fun GrowthCard(ctx: CardContext) {
                 if (logged > 0) "$logged of ${MilestoneCatalog.groups.sumOf { it.items.size }}" else null,
                 onClick = ctx.onMilestones,
             )
-            if (growth.isNotEmpty()) {
-                ShowMoreRow(showAll) { showAll = !showAll }
-                if (showAll) {
-                    growth.forEach { entry ->
-                        val g = entry.growth
-                        val parts = listOfNotNull(
-                            g?.weightKg?.let { Format.weight(it, units) },
-                            g?.heightCm?.let { Format.length(it, units) },
-                            g?.headCm?.let { "head ${Format.length(it, units)}" },
-                        )
-                        RowDivider()
-                        MetricRow(IconKind.WEIGHT, dateOf(entry) ?: "", null, parts.joinToString("  ·  ")) { ctx.edit(entry) }
-                    }
-                }
-            }
         }
     }
 }

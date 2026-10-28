@@ -139,6 +139,7 @@ fun ActivityTab(
                         onFeedPicker = { showFeedPicker = true },
                         onShowHistory = onShowHistory,
                         onMilestones = { navigate(Routes.MILESTONES) },
+                        onGrowth = { metric -> navigate(Routes.growth(metric)) },
                     )
                     items(layout.order.filter(layout::isCardVisible), key = { it.name }) { card ->
                         DashboardCardFor(card, ctx)

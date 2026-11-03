@@ -1,23 +1,27 @@
 package com.lifestyle.nestly.dream
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,11 +53,25 @@ import kotlinx.coroutines.launch
 
 /** Near-black so an OLED nightstand stays dark; [NestlyColors.Background] is too bright at 3am. */
 private val NightBackground = Color(0xFF0B0C12)
-private val NightDim = NestlyColors.TextSecondary.copy(alpha = 0.75f)
-private val NightFaint = NestlyColors.TextMuted.copy(alpha = 0.8f)
+private val NightDim = NestlyColors.TextSecondary.copy(alpha = 0.85f)
+private val NightFaint = NestlyColors.TextMuted.copy(alpha = 0.9f)
 
-private val ClockStyle = TextStyle(fontFamily = SerifDisplay, fontWeight = FontWeight.Light, fontSize = 88.sp, lineHeight = 96.sp)
-private val CountdownStyle = TextStyle(fontFamily = SerifDisplay, fontWeight = FontWeight.Light, fontSize = 64.sp, lineHeight = 72.sp)
+/** True red for overdue — must read as "late" from across the room, even half-asleep. */
+private val NightOverdue = Color(0xFFFF5147)
+
+private fun heroStyle(size: TextUnit) = TextStyle(
+    fontFamily = SerifDisplay,
+    fontWeight = FontWeight.Normal,
+    fontSize = size,
+    lineHeight = size * 1.05f,
+)
+
+private fun labelStyle(size: TextUnit) = TextStyle(
+    fontWeight = FontWeight.SemiBold,
+    fontSize = size,
+    lineHeight = size * 1.22f,
+    letterSpacing = 4.sp,
+)
 
 @Composable
 fun NightstandScreen(
@@ -122,83 +141,360 @@ fun NightstandScreen(
             ) {},
         contentAlignment = Alignment.Center,
     ) {
-        // Landscape (nightstand on its side) gets two side-by-side panes;
-        // portrait keeps the stacked column.
         val landscape = maxWidth > maxHeight
-        if (landscape) {
-            Row(
-                Modifier
-                    .offset(x = shiftX, y = shiftY)
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    Modifier.weight(1f),
-                    horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(state?.profileName ?: "Nestly", style = NestlyType.CardTitle, color = NightDim)
-                    Spacer(Modifier.height(8.dp))
-                    Text(Format.time(now), style = ClockStyle, color = NestlyColors.TextPrimary)
-                    Text(Format.headerDate(now), style = NestlyType.RowLabel, color = NightFaint)
-                }
-                Spacer(Modifier.width(32.dp))
-                Column(
-                    Modifier.weight(1.15f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    NightstandBody(state, now, compact = true)
-                    if (state?.profileName != null) {
-                        Spacer(Modifier.height(20.dp))
-                        LogFeedButton(logging, onClick = { logFeed() })
-                    }
-                }
-            }
+
+        // --- Responsive type: EVERY font below is derived from the actual
+        // window size reported by BoxWithConstraints, so it recomposes and
+        // rescales live on rotation / resize / a different tablet. No fixed
+        // sp anywhere in landscape.
+        //
+        // Landscape: 3 heroes share one row. Each hero column is ~1/3 of the
+        // usable width; a 6-char hero ("5:36pm", "1h 43m") is ~3.2em wide in
+        // this serif, so fontSize = columnWidth * 0.32 keeps it on one line
+        // with margin at any tablet size. Height caps it on short screens.
+        val heroSize = if (landscape) {
+            val columnWidth = (maxWidth.value - 64f) / 3f
+            minOf(columnWidth * 0.32f, maxHeight.value * 0.30f).coerceIn(48f, 180f).sp
         } else {
+            minOf(maxWidth.value * 0.23f, maxHeight.value * 0.15f).coerceIn(64f, 150f).sp
+        }
+        val countdownSize = heroSize
+
+        // All other type scales in proportion to the hero, clamped so it
+        // stays sane on very small / very large tablets.
+        // e.g. landscape hero 78sp (small tab) -> label 14sp, buttons 24/20sp
+        //      landscape hero 130sp (10" tab) -> label 21sp, buttons 36/30sp
+        //      landscape hero 180sp (large tab) -> label 26sp, buttons 42/36sp
+        val labelSize = (heroSize.value * 0.16f).coerceIn(14f, 26f).sp
+        val headerSize = (heroSize.value * 0.21f).coerceIn(18f, 36f).sp
+        val supportSize = (heroSize.value * 0.155f).coerceIn(15f, 27f).sp
+        val supportSmallSize = (heroSize.value * 0.14f).coerceIn(14f, 24f).sp
+        val logTextSize = (heroSize.value * 0.26f).coerceIn(22f, 42f).sp
+        val closeTextSize = (heroSize.value * 0.22f).coerceIn(19f, 36f).sp
+        // Button height also grows with the tablet's height in landscape.
+        val landscapeButtonHeight = (maxHeight.value * 0.115f).coerceIn(64f, 96f).dp
+
+        val showLog = state?.profileName != null
+
+        if (landscape) {
+            // Tablet on a TV console, read from the couch: a single row of
+            // NOW | NEXT FEED | IN, then supporting line, then actions
+            // side-by-side. Nothing stacks vertically except those 3 bands,
+            // so nothing can be pushed off the bottom.
             Column(
                 Modifier
                     .offset(x = shiftX, y = shiftY)
-                    .padding(32.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 32.dp, vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                HeaderLine(state, now, headerSize)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        HeroNumber(
+                            label = "NOW",
+                            value = Format.time(now),
+                            valueColor = NestlyColors.TextPrimary,
+                            fontSize = heroSize,
+                            labelSize = labelSize,
+                        )
+                    }
+                    VerticalDivider(
+                        color = NestlyColors.Divider.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxHeight(0.55f),
+                    )
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        NextFeedHero(state, fontSize = heroSize, labelSize = labelSize)
+                    }
+                    VerticalDivider(
+                        color = NestlyColors.Divider.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxHeight(0.55f),
+                    )
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        CountdownHero(state, now, fontSize = countdownSize, labelSize = labelSize)
+                    }
+                }
+                SupportingLine(state, now, supportSize, supportSmallSize)
+                Spacer(Modifier.height(18.dp))
+                BigActions(
+                    logging = logging,
+                    showLog = showLog,
+                    onLog = { logFeed() },
+                    onClose = onExit,
+                    horizontal = true,
+                    logTextSize = logTextSize,
+                    closeTextSize = closeTextSize,
+                    horizontalButtonHeight = landscapeButtonHeight,
+                )
+            }
+        } else {
+            // Phone on a nightstand: one stacked column, heroes top to bottom.
+            Column(
+                Modifier
+                    .offset(x = shiftX, y = shiftY)
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(
-                    state?.profileName ?: "Nestly",
-                    style = NestlyType.CardTitle,
-                    color = NightDim,
-                    textAlign = TextAlign.Center,
+                HeaderLine(state, now, headerSize)
+                Spacer(Modifier.height(10.dp))
+                HeroNumber(
+                    label = "NOW",
+                    value = Format.time(now),
+                    valueColor = NestlyColors.TextPrimary,
+                    fontSize = heroSize,
+                    labelSize = labelSize,
                 )
-                Spacer(Modifier.height(8.dp))
-                Text(Format.time(now), style = ClockStyle, color = NestlyColors.TextPrimary, textAlign = TextAlign.Center)
-                Text(Format.headerDate(now), style = NestlyType.RowLabel, color = NightFaint, textAlign = TextAlign.Center)
-                Spacer(Modifier.height(40.dp))
-                NightstandBody(state, now)
-                if (state?.profileName != null) {
-                    Spacer(Modifier.height(36.dp))
-                    LogFeedButton(logging, onClick = { logFeed() })
-                }
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = NestlyColors.Divider.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth(0.86f))
+                Spacer(Modifier.height(14.dp))
+                NextFeedHero(state, fontSize = heroSize, labelSize = labelSize)
+                Spacer(Modifier.height(14.dp))
+                HorizontalDivider(color = NestlyColors.Divider.copy(alpha = 0.5f), modifier = Modifier.fillMaxWidth(0.86f))
+                Spacer(Modifier.height(14.dp))
+                CountdownHero(state, now, fontSize = countdownSize, labelSize = labelSize)
+                SupportingLine(state, now, supportSize, supportSmallSize)
+                Spacer(Modifier.height(26.dp))
+                BigActions(
+                    logging = logging,
+                    showLog = showLog,
+                    onLog = { logFeed() },
+                    onClose = onExit,
+                    logTextSize = logTextSize,
+                    closeTextSize = closeTextSize,
+                )
             }
-        }
-        // An interactive dream no longer exits on any touch, so give an
-        // explicit way out (the power button also ends it).
-        TextButton(
-            onClick = onExit,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-        ) {
-            Text("Done", style = NestlyType.Body, color = NightFaint)
         }
     }
 }
 
 @Composable
-private fun LogFeedButton(logging: Boolean, onClick: () -> Unit) {
+private fun HeaderLine(state: NightstandState?, now: Long, fontSize: TextUnit = 24.sp) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            state?.profileName ?: "Nestly",
+            style = TextStyle(fontFamily = SerifDisplay, fontWeight = FontWeight.Normal, fontSize = fontSize, lineHeight = fontSize * 1.17f),
+            color = NightDim,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Text(
+            "  ·  ${Format.headerDate(now)}",
+            style = TextStyle(fontSize = fontSize * 0.83f, lineHeight = fontSize),
+            color = NightFaint,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+/** One hero number: small tracked-out label above a very large value. */
+@Composable
+private fun HeroNumber(
+    label: String,
+    value: String,
+    valueColor: Color,
+    fontSize: TextUnit,
+    labelColor: Color = NightFaint,
+    labelSize: TextUnit = 18.sp,
+) {
+    // Never wrap a hero ("1h 43m" must stay on one line): shrink longer
+    // values instead — "11:36pm" / "1h 43m" (6-7 chars) vs "NOW" (3).
+    val shrink = when {
+        value.length <= 4 -> 1f
+        value.length == 5 -> 0.94f
+        value.length == 6 -> 0.84f
+        value.length == 7 -> 0.74f
+        else -> 0.64f
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(label, style = labelStyle(labelSize), color = labelColor, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            value,
+            style = heroStyle(fontSize * shrink),
+            color = valueColor,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+/** #2 — next feed time. */
+@Composable
+private fun NextFeedHero(state: NightstandState?, fontSize: TextUnit, labelSize: TextUnit = 18.sp) {
+    val dueMs = when (val next = state?.nextFeed) {
+        is NextFeedState.Upcoming -> next.dueMs
+        is NextFeedState.DueNow -> next.dueMs
+        is NextFeedState.Overdue -> next.dueMs
+        else -> null
+    }
+    when {
+        state == null -> HeroNumber("NEXT FEED", "—", NightFaint, fontSize, labelSize = labelSize)
+        state.profileName == null -> HeroNumber("NEXT FEED", "—", NightFaint, fontSize, labelSize = labelSize)
+        state.lastFeed == null -> HeroNumber("NEXT FEED", "—", NightFaint, fontSize, labelSize = labelSize)
+        dueMs != null -> HeroNumber("NEXT FEED", Format.time(dueMs), NestlyColors.TextPrimary, fontSize, labelSize = labelSize)
+        else -> HeroNumber("NEXT FEED", "—", NightFaint, fontSize, labelSize = labelSize)
+    }
+}
+
+/**
+ * #3 / #4 — time until the next feed, or (in red) how long overdue it is.
+ * Same hero slot so it never jumps around: the label and colour switch
+ * from "IN" (amber) to "OVERDUE BY" / "DUE NOW" (red) at the due time.
+ */
+@Composable
+private fun CountdownHero(state: NightstandState?, now: Long, fontSize: TextUnit, labelSize: TextUnit = 18.sp) {
+    when {
+        state == null ->
+            HeroNumber("IN", "…", NightFaint, fontSize, labelSize = labelSize)
+        state.profileName == null ->
+            Text(
+                "Open Nestly to set up your family",
+                style = NestlyType.RowLabel,
+                color = NightDim,
+                textAlign = TextAlign.Center,
+            )
+        state.lastFeed == null -> {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                HeroNumber("IN", "—", NightFaint, fontSize, labelSize = labelSize)
+                Spacer(Modifier.height(8.dp))
+                Text("No feeds logged yet — tap LOG FEED", style = NestlyType.RowLabel, color = NightDim, textAlign = TextAlign.Center)
+            }
+        }
+        else -> when (val next = state.nextFeed) {
+            is NextFeedState.Upcoming ->
+                HeroNumber(
+                    label = "IN",
+                    value = minutesText(next.remainingMs, roundUp = true),
+                    valueColor = NestlyColors.Feed,
+                    fontSize = fontSize,
+                    labelSize = labelSize,
+                )
+            is NextFeedState.DueNow ->
+                HeroNumber(
+                    label = "IN",
+                    value = "NOW",
+                    valueColor = NightOverdue,
+                    fontSize = fontSize,
+                    labelColor = NightOverdue,
+                    labelSize = labelSize,
+                )
+            is NextFeedState.Overdue ->
+                HeroNumber(
+                    label = "OVERDUE BY",
+                    value = minutesText(next.overdueMs, roundUp = false),
+                    valueColor = NightOverdue,
+                    fontSize = fontSize,
+                    labelColor = NightOverdue,
+                    labelSize = labelSize,
+                )
+            NextFeedState.NoFeed ->
+                HeroNumber("IN", "—", NightFaint, fontSize, labelSize = labelSize)
+        }
+    }
+}
+
+/** Demoted supporting info — deliberately small next to the heroes. */
+@Composable
+private fun SupportingLine(
+    state: NightstandState?,
+    now: Long,
+    fontSize: TextUnit = 19.sp,
+    smallFontSize: TextUnit = 17.sp,
+) {
+    if (state?.lastFeed == null || state.profileName == null) return
+    val lastFeed = state.lastFeed
+    Spacer(Modifier.height(16.dp))
+    val lastParts = listOfNotNull(
+        "Last feed ${Format.time(lastFeed.startTime)}",
+        Format.ago(lastFeed.startTime, now),
+        lastFeed.detailText(state.units),
+    )
+    Text(
+        lastParts.joinToString("  ·  "),
+        style = TextStyle(fontSize = fontSize, lineHeight = fontSize * 1.26f),
+        color = NightDim,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(6.dp))
+    val todayText = when {
+        state.todayFeedCount == 0 -> "No feeds yet today"
+        state.todayBottleMl > 0 -> "Today: ${state.todayFeedCount} ${if (state.todayFeedCount == 1) "feed" else "feeds"}  ·  ${Format.volume(state.todayBottleMl, state.units)}"
+        else -> "Today: ${state.todayFeedCount} ${if (state.todayFeedCount == 1) "feed" else "feeds"}"
+    }
+    Text(
+        "$todayText  ·  every ~${minutesText(state.intervalMinutes * 60_000L, roundUp = false)}",
+        style = TextStyle(fontSize = smallFontSize, lineHeight = smallFontSize * 1.29f),
+        color = NightFaint,
+        textAlign = TextAlign.Center,
+    )
+}
+
+/**
+ * Big, couch-distance actions: LOG FEED on top, Close directly under it.
+ * Replaces the old small corner "Done" — no hunting for a tiny target.
+ */
+@Composable
+private fun BigActions(
+    logging: Boolean,
+    showLog: Boolean,
+    onLog: () -> Unit,
+    onClose: () -> Unit,
+    horizontal: Boolean = false,
+    logTextSize: TextUnit = 30.sp,
+    closeTextSize: TextUnit = 25.sp,
+    horizontalButtonHeight: androidx.compose.ui.unit.Dp = 76.dp,
+) {
+    if (horizontal) {
+        // Landscape: side-by-side so the buttons take one short band of
+        // height instead of stacking and pushing content off-screen.
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            if (showLog) {
+                LogFeedButton(logging, onLog, Modifier.weight(1f).height(horizontalButtonHeight), logTextSize)
+            }
+            CloseButton(onClose, Modifier.weight(1f).height(horizontalButtonHeight), closeTextSize)
+        }
+    } else {
+        Column(
+            Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            if (showLog) {
+                LogFeedButton(logging, onLog, Modifier.fillMaxWidth().height(84.dp), logTextSize)
+            }
+            CloseButton(onClose, Modifier.fillMaxWidth().height(68.dp), closeTextSize)
+        }
+    }
+}
+
+@Composable
+private fun LogFeedButton(
+    logging: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    textSize: TextUnit = 30.sp,
+) {
     Button(
         onClick = onClick,
         enabled = !logging,
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = NestlyColors.Feed,
             contentColor = NestlyColors.HeaderText,
@@ -207,9 +503,34 @@ private fun LogFeedButton(logging: Boolean, onClick: () -> Unit) {
         ),
     ) {
         Text(
-            if (logging) "Logging…" else "Log Feed",
-            style = NestlyType.Button,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp),
+            if (logging) "LOGGING…" else "LOG FEED",
+            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = textSize, lineHeight = textSize * 1.13f, letterSpacing = 2.sp),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+@Composable
+private fun CloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    textSize: TextUnit = 25.sp,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = NestlyColors.SurfaceRaised,
+            contentColor = NestlyColors.TextPrimary,
+        ),
+    ) {
+        Text(
+            "CLOSE",
+            style = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = textSize, lineHeight = textSize * 1.2f, letterSpacing = 2.sp),
+            maxLines = 1,
+            softWrap = false,
         )
     }
 }
@@ -219,67 +540,4 @@ private fun minutesText(ms: Long, roundUp: Boolean): String {
     val minutes = if (roundUp) (ms + 59_999L) / 60_000L else ms / 60_000L
     // Format.duration renders whole hours as "3h 0m"; trim the dangling zero.
     return Format.duration(minutes.coerceAtLeast(1) * 60).removeSuffix(" 0m")
-}
-
-@Composable
-private fun NightstandBody(state: NightstandState?, now: Long, compact: Boolean = false) {
-    when {
-        state == null -> Text("Loading…", style = NestlyType.Body, color = NightFaint)
-        state.profileName == null ->
-            Text(
-                "Open Nestly to set up your family",
-                style = NestlyType.Body,
-                color = NightDim,
-                textAlign = TextAlign.Center,
-            )
-        state.lastFeed == null -> {
-            Text("No feeds logged yet", style = CountdownStyle, color = NestlyColors.TextPrimary, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(12.dp))
-            Text("Tap Log Feed to record one now", style = NestlyType.Body, color = NightDim, textAlign = TextAlign.Center)
-        }
-        else -> FeedBody(state, now, compact)
-    }
-}
-
-@Composable
-private fun FeedBody(state: NightstandState, now: Long, compact: Boolean = false) {
-    val lastFeed = state.lastFeed ?: return
-    val next = state.nextFeed
-
-    Text("NEXT FEED", style = NestlyType.Small, color = NightFaint, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(4.dp))
-    // The due time is the hero, as large as the clock; the countdown supports it.
-    val (dueMs, countdown, countdownColor) = when (next) {
-        is NextFeedState.Upcoming ->
-            Triple(next.dueMs, "in ${minutesText(next.remainingMs, roundUp = true)}", NestlyColors.TextPrimary)
-        is NextFeedState.DueNow ->
-            Triple(next.dueMs, "Due now", NestlyColors.Danger)
-        is NextFeedState.Overdue ->
-            Triple(next.dueMs, "${minutesText(next.overdueMs, roundUp = false)} overdue", NestlyColors.Danger)
-        NextFeedState.NoFeed -> null // unreachable: lastFeed != null implies a due time
-    } ?: return
-    Text(Format.time(dueMs), style = ClockStyle, color = NestlyColors.TextPrimary, textAlign = TextAlign.Center)
-    Text(countdown, style = NestlyType.CardTitle, color = countdownColor, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(8.dp))
-    Text(
-        "Estimated every ${minutesText(state.intervalMinutes * 60_000L, roundUp = false)} after the last feed",
-        style = NestlyType.Small,
-        color = NightFaint,
-        textAlign = TextAlign.Center,
-    )
-
-    Spacer(Modifier.height(if (compact) 16.dp else 32.dp))
-    val lastParts = listOfNotNull(
-        "Last feed ${Format.time(lastFeed.startTime)}",
-        Format.ago(lastFeed.startTime, now),
-        lastFeed.detailText(state.units),
-    )
-    Text(lastParts.joinToString("  ·  "), style = NestlyType.RowLabel, color = NightDim, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(8.dp))
-    val todayText = when {
-        state.todayFeedCount == 0 -> "No feeds yet today"
-        state.todayBottleMl > 0 -> "Today: ${state.todayFeedCount} ${if (state.todayFeedCount == 1) "feed" else "feeds"}  ·  ${Format.volume(state.todayBottleMl, state.units)}"
-        else -> "Today: ${state.todayFeedCount} ${if (state.todayFeedCount == 1) "feed" else "feeds"}"
-    }
-    Text(todayText, style = NestlyType.Body, color = NightFaint, textAlign = TextAlign.Center)
 }

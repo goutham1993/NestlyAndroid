@@ -73,6 +73,7 @@ object Routes {
     fun growth(metric: com.lifestyle.nestly.data.growth.GrowthMetric) = "growth/${metric.name}"
     const val EDIT_ACTIVITIES = "editActivities"
     const val MILESTONES = "milestones"
+    const val VACCINATIONS = "vaccinations"
     const val REMINDERS = "reminders"
     const val APPOINTMENTS = "appointments"
     const val APPOINTMENT_NEW = "appointments/new"
@@ -185,6 +186,9 @@ fun NestlyApp(
                 }
                 composable(Routes.EDIT_ACTIVITIES) { EditActivitiesScreen(onBack = back) }
                 composable(Routes.MILESTONES) { MilestonesScreen(onBack = back, onOpenEntry = openEntry) }
+                composable(Routes.VACCINATIONS) {
+                    com.lifestyle.nestly.ui.vaccinations.VaccinationsScreen(onBack = back, onOpenEntry = openEntry)
+                }
                 composable(Routes.REMINDERS) { RemindersScreen(onBack = back) }
                 composable(Routes.APPOINTMENTS) {
                     AppointmentsScreen(

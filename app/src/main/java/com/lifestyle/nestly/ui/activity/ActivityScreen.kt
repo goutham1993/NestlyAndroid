@@ -149,6 +149,7 @@ fun ActivityTab(
                         onShowHistory = onShowHistory,
                         onMilestones = { navigate(Routes.MILESTONES) },
                         onGrowth = { metric -> navigate(Routes.growth(metric)) },
+                        onVaccinations = { navigate(Routes.VACCINATIONS) },
                     )
                     items(layout.order.filter(layout::isCardVisible), key = { it.name }) { card ->
                         DashboardCardFor(card, ctx)

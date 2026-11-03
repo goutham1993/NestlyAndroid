@@ -41,6 +41,7 @@ class CardContext(
     val onShowHistory: () -> Unit,
     val onMilestones: () -> Unit,
     val onGrowth: (com.lifestyle.nestly.data.growth.GrowthMetric) -> Unit,
+    val onVaccinations: () -> Unit,
 ) {
     fun today(card: CardKind): List<ActivityEntity> =
         data.recent.filter { it.type.card == card && it.startTime >= startOfToday && it.startTime <= now + 60_000 }
@@ -276,6 +277,6 @@ private fun HealthCard(ctx: CardContext) {
             "Vaccine",
             vaccine?.let { Format.relativeDay(it.startTime, ctx.now) },
             vaccine?.vaccine?.vaccines?.size?.let { if (it == 1) "1 vaccine" else "$it vaccines" },
-        ) { ctx.new(EntryKind.VACCINE) }
+        ) { ctx.onVaccinations() }
     }
 }

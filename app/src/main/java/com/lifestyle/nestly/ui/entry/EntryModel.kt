@@ -45,7 +45,12 @@ enum class EntryKind(val title: String, val card: CardKind, val icon: IconKind) 
 }
 
 sealed interface EntryRequest {
-    data class New(val kind: EntryKind, val milestone: Milestone? = null) : EntryRequest
+    data class New(
+        val kind: EntryKind,
+        val milestone: Milestone? = null,
+        /** Vaccines pre-selected in the form, e.g. when logging a dose from the vaccination chart. */
+        val vaccines: List<String> = emptyList(),
+    ) : EntryRequest
     data class Edit(val activityId: String) : EntryRequest
 }
 

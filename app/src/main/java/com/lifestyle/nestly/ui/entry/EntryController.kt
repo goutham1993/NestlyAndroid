@@ -277,6 +277,7 @@ class EntryController(
             startTimeSet = !timed,
             milestoneKey = request.milestone?.key,
             milestoneTitle = request.milestone?.title.orEmpty(),
+            vaccines = request.vaccines,
         )
     }
 }

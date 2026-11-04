@@ -44,6 +44,7 @@ fun EntrySheet(
     onDismiss: () -> Unit,
     onSave: (() -> Unit)?,
     saveEnabled: Boolean = true,
+    saveLabel: String = "Save",
     onDelete: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -57,7 +58,7 @@ fun EntrySheet(
         contentWindowInsets = { androidx.compose.foundation.layout.WindowInsets(0) },
     ) {
         Column(Modifier.fillMaxSize()) {
-            SheetHeader(title, headerColor, onDismiss, onSave, saveEnabled)
+            SheetHeader(title, headerColor, onDismiss, onSave, saveEnabled, saveLabel = saveLabel)
             Column(
                 Modifier
                     .weight(1f)

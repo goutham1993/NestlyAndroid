@@ -158,6 +158,7 @@ fun FiltersSheet(initial: Set<FilterOption>, onDismiss: () -> Unit, onApply: (Se
         headerColor = NestlyColors.Diaper,
         onDismiss = onDismiss,
         onSave = { onApply(selected) },
+        saveLabel = "Apply",
     ) {
         FILTER_ROWS.forEachIndexed { index, row ->
             if (index == 2) {

@@ -35,6 +35,8 @@ data class HistoryData(
     val weekStart: LocalDate,
     val days: List<HistoryDay>,
     val selected: LocalDate,
+    /** Filtered entries for the whole visible week, newest first — plotted on the timeline grid. */
+    val weekEntries: List<ActivityEntity>,
     /** Filtered entries for [selected], newest first. */
     val entries: List<ActivityEntity>,
     val maxBarValue: Double,
@@ -95,6 +97,7 @@ class HistoryViewModel(private val container: AppContainer) : ViewModel() {
             weekStart = weekStart,
             days = days,
             selected = selected,
+            weekEntries = filtered,
             entries = dayEntries,
             maxBarValue = maxBar,
         )

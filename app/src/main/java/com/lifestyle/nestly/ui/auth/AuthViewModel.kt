@@ -10,22 +10,41 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class AuthState { LOADING, SIGNED_OUT, SIGNED_IN }
 
+private enum class Gate { AUTHENTICATED, SIGNED_OUT, PENDING }
+
+private fun SessionStatus.gate(): Gate = when (this) {
+    is SessionStatus.Authenticated -> Gate.AUTHENTICATED
+    is SessionStatus.NotAuthenticated -> Gate.SIGNED_OUT
+    else -> Gate.PENDING
+}
+
 class AuthViewModel(private val container: AppContainer) : ViewModel() {
 
+    /**
+     * Initializing / RefreshFailure only mean LOADING before the first
+     * resolution. supabase-kt sets Initializing every time the app goes to the
+     * background (it pauses auto-refresh) and re-authenticates on foreground;
+     * treating that as LOADING made NestlyApp drop the whole signed-in tree —
+     * nav stack, open entry sheet — so every resume looked like a fresh sign-in.
+     */
     val state: StateFlow<AuthState> = container.auth.sessionStatus
-        .map { status ->
-            when (status) {
-                is SessionStatus.Authenticated -> AuthState.SIGNED_IN
-                is SessionStatus.NotAuthenticated -> AuthState.SIGNED_OUT
-                else -> AuthState.LOADING
+        .map { it.gate() }
+        .scan(AuthState.LOADING) { previous, gate ->
+            when (gate) {
+                Gate.AUTHENTICATED -> AuthState.SIGNED_IN
+                Gate.SIGNED_OUT -> AuthState.SIGNED_OUT
+                Gate.PENDING -> if (previous == AuthState.SIGNED_IN) AuthState.SIGNED_IN else AuthState.LOADING
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, AuthState.LOADING)
@@ -36,27 +55,36 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
 
     /**
      * Profiles visible to this account; null until a fetch has completed
-     * *as the signed-in user*. Resetting to null whenever the session is not
-     * authenticated (cold-start restore, token refresh, sign-out) ensures a
-     * result produced before/without a session can never reach the
+     * *as the signed-in user*, and reset to null on sign-out. Nothing is
+     * fetched while the session is pending (cold-start restore, background
+     * pause), so a result produced without a session can never reach the
      * onboarding gate in NestlyApp — that stale empty result was the
-     * onboarding flash seen before the home screen appeared.
+     * onboarding flash seen before the home screen appeared. The last good
+     * value is kept while pending so resuming the app doesn't blank the UI.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val profiles: StateFlow<List<ProfileEntity>?> = container.auth.sessionStatus
-        .flatMapLatest { status ->
-            if (status is SessionStatus.Authenticated) container.family.profiles else flowOf(null)
+        .map { it.gate() }
+        .distinctUntilChanged()
+        .flatMapLatest { gate ->
+            when (gate) {
+                Gate.AUTHENTICATED -> container.family.profiles
+                Gate.SIGNED_OUT -> flowOf(null)
+                Gate.PENDING -> emptyFlow()
+            }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Null until the families fetch has completed as the signed-in user. */
     @OptIn(ExperimentalCoroutinesApi::class)
     val hasFamily: StateFlow<Boolean?> = container.auth.sessionStatus
-        .flatMapLatest { status ->
-            if (status is SessionStatus.Authenticated) {
-                container.family.families.map { it.isNotEmpty() }
-            } else {
-                flowOf(null)
+        .map { it.gate() }
+        .distinctUntilChanged()
+        .flatMapLatest { gate ->
+            when (gate) {
+                Gate.AUTHENTICATED -> container.family.families.map { it.isNotEmpty() }
+                Gate.SIGNED_OUT -> flowOf(null)
+                Gate.PENDING -> emptyFlow()
             }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

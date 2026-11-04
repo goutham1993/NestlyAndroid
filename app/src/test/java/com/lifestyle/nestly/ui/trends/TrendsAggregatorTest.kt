@@ -7,7 +7,6 @@ import com.lifestyle.nestly.data.model.DiaperDetails
 import com.lifestyle.nestly.data.model.DiaperType
 import com.lifestyle.nestly.data.model.MilkType
 import com.lifestyle.nestly.data.model.PumpDetails
-import com.lifestyle.nestly.data.prefs.CardKind
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
@@ -55,6 +54,21 @@ class TrendsAggregatorTest {
         updatedAt = 0,
     )
 
+    private fun sleep(id: String, start: Long, end: Long) = ActivityEntity(
+        id = id,
+        familyId = "f",
+        profileId = "p",
+        type = ActivityType.SLEEP,
+        startTime = start,
+        endTime = end,
+        timeZone = "UTC",
+        createdAt = 0,
+        updatedAt = 0,
+    )
+
+    private fun compute(metric: TrendMetric, entries: List<ActivityEntity>, days: Int = 7) =
+        TrendsAggregator.compute(metric, entries, day0, days, zone)
+
     @Test
     fun sevenDayAveragesAndBarCounts() {
         val entries = listOf(
@@ -62,25 +76,55 @@ class TrendsAggregatorTest {
             bottle(day0.plusDays(1), 100.0),
             pump(day0, 80.0),
             diaper(day0),
-            diaper(day0),
             diaper(day0.plusDays(2)),
+        ) + diaper(day0).copy(id = "d2")
+
+        val sessions = compute(TrendMetric.FEED_SESSIONS, entries)
+        assertEquals(2.0 / 7, sessions.value, 1e-9)
+        assertEquals(7, sessions.days.size)
+
+        val bottlefed = compute(TrendMetric.AMOUNT_BOTTLEFED, entries)
+        assertEquals(250.0 / 7, bottlefed.value, 1e-9)
+        assertEquals(150.0, bottlefed.days[0].total, 0.0)
+        assertEquals(100.0, bottlefed.days[1].total, 0.0)
+        assertEquals(0.0, bottlefed.days[2].total, 0.0)
+        assertEquals(TrendSeries.BREAST_MILK, bottlefed.breakdown.single().series)
+
+        assertEquals(125.0, compute(TrendMetric.BOTTLE_SIZE, entries).value, 1e-9)
+        assertEquals(80.0 / 7, compute(TrendMetric.AMOUNT_PUMPED, entries).value, 1e-9)
+
+        val diapers = compute(TrendMetric.TOTAL_DIAPERS, entries)
+        assertEquals(3, diapers.sampleCount)
+        assertEquals(3.0 / 7, diapers.value, 1e-9)
+        assertEquals(2.0, diapers.days[0].total, 0.0)
+        // Every fixture is at noon.
+        assertEquals(0.0, compute(TrendMetric.NIGHT_DIAPERS, entries).value, 0.0)
+    }
+
+    @Test
+    fun overnightSleepSplitsAcrossDaysAndBands() {
+        // 9pm day0 → 7am day1: 3h night on day0, 6h night + 1h day on day1.
+        val entries = listOf(sleep("s", ms(day0, 21), ms(day0.plusDays(1), 7)))
+        val total = compute(TrendMetric.TOTAL_SLEEP, entries, days = 2)
+        assertEquals(3 * 3600.0, total.days[0].total, 0.0)
+        assertEquals(7 * 3600.0, total.days[1].total, 0.0)
+        assertEquals(5 * 3600.0, total.value, 0.0)
+        val day = compute(TrendMetric.DAY_SLEEP, entries, days = 2)
+        assertEquals(3600.0, day.days[1].total, 0.0)
+        val night = compute(TrendMetric.NIGHT_SLEEP, entries, days = 2)
+        assertEquals(9 * 3600.0, night.days.sumOf { it.total }, 0.0)
+    }
+
+    @Test
+    fun comboFeedCountsAsOneSessionAndGapsAverage() {
+        val combo = listOf(
+            bottle(day0, 60.0).copy(id = "c1", comboGroupId = "g"),
+            bottle(day0, 0.0).copy(id = "c2", type = ActivityType.BREASTFEED, bottle = null, comboGroupId = "g"),
         )
-        val cards = TrendsAggregator.aggregate(entries, day0, 7, zone)
-        val feed = cards.first { it.kind == CardKind.FEED }
-        assertEquals(2, feed.count)
-        assertEquals(250.0 / 7, feed.average, 1e-9)
-        assertEquals(7, feed.bars.size)
-        assertEquals(150.0, feed.bars[0].value, 0.0)
-        assertEquals(100.0, feed.bars[1].value, 0.0)
-        assertEquals(0.0, feed.bars[2].value, 0.0)
-
-        val pumpCard = cards.first { it.kind == CardKind.PUMP }
-        assertEquals(1, pumpCard.count)
-        assertEquals(80.0 / 7, pumpCard.average, 1e-9)
-
-        val diaperCard = cards.first { it.kind == CardKind.DIAPER }
-        assertEquals(3, diaperCard.count)
-        assertEquals(3.0 / 7, diaperCard.average, 1e-9)
-        assertEquals(2.0, diaperCard.bars[0].value, 0.0)
+        val later = bottle(day0, 90.0).copy(id = "late", startTime = ms(day0, 15))
+        val sessions = compute(TrendMetric.FEED_SESSIONS, combo + later)
+        assertEquals(2, sessions.sampleCount)
+        assertEquals(listOf(TrendSeries.BOTTLE, TrendSeries.COMBO), sessions.breakdown.map { it.series })
+        assertEquals(3 * 3600.0, compute(TrendMetric.TIME_BETWEEN_FEEDS, combo + later).value, 0.0)
     }
 }

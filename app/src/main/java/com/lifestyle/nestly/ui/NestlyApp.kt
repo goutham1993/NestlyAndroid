@@ -61,7 +61,10 @@ import com.lifestyle.nestly.ui.appointments.AppointmentsScreen
 import com.lifestyle.nestly.ui.milestones.MilestonesScreen
 import com.lifestyle.nestly.ui.history.HistoryTab
 import com.lifestyle.nestly.ui.reminders.RemindersScreen
+import com.lifestyle.nestly.ui.trends.TrendDetailScreen
+import com.lifestyle.nestly.ui.trends.TrendMetric
 import com.lifestyle.nestly.ui.trends.TrendsTab
+import com.lifestyle.nestly.ui.trends.TrendsWindow
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.units.LocalUnitPrefs
 import com.lifestyle.nestly.data.supabase.DataErrors
@@ -87,6 +90,8 @@ object Routes {
     const val SUBSCRIPTION = "subscription"
     const val HELP = "help"
     const val IMPORT = "import"
+    const val TREND_DETAIL = "trends/{metric}/{window}"
+    fun trendDetail(metric: TrendMetric, window: TrendsWindow) = "trends/${metric.name}/${window.name}"
 }
 
 enum class Tab(val label: String, val icon: ImageVector) {
@@ -184,6 +189,15 @@ fun NestlyApp(
                         ?: com.lifestyle.nestly.data.growth.GrowthMetric.WEIGHT
                     com.lifestyle.nestly.ui.growth.GrowthScreen(metric, onBack = back, onOpenEntry = openEntry)
                 }
+                composable(Routes.TREND_DETAIL) { backStack ->
+                    val metric = backStack.arguments?.getString("metric")
+                        ?.let { runCatching { TrendMetric.valueOf(it) }.getOrNull() }
+                        ?: TrendMetric.FEED_SESSIONS
+                    val window = backStack.arguments?.getString("window")
+                        ?.let { runCatching { TrendsWindow.valueOf(it) }.getOrNull() }
+                        ?: TrendsWindow.SEVEN
+                    TrendDetailScreen(metric, window, onBack = back, onOpenEntry = openEntry)
+                }
                 composable(Routes.EDIT_ACTIVITIES) { EditActivitiesScreen(onBack = back) }
                 composable(Routes.MILESTONES) { MilestonesScreen(onBack = back, onOpenEntry = openEntry) }
                 composable(Routes.VACCINATIONS) {
@@ -241,7 +255,7 @@ private fun MainTabs(appViewModel: AppViewModel, openEntry: (EntryRequest) -> Un
                     onShowHistory = { selectTab(Tab.HISTORY) },
                 )
                 Tab.HISTORY -> HistoryTab(appViewModel, onOpenEntry = openEntry, navigate = navigate)
-                Tab.TRENDS -> TrendsTab(appViewModel)
+                Tab.TRENDS -> TrendsTab(appViewModel, navigate)
                 Tab.ACCOUNT -> AccountTab(navigate)
             }
         }

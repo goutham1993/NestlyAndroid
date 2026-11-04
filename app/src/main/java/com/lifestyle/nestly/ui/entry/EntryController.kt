@@ -181,8 +181,7 @@ class EntryController(
                     now = now,
                     newId = { UUID.randomUUID().toString() },
                 )
-                container.activities.saveAll(EntryBuilder.build(kind, d, ctx, existing))
-                runCatching { container.scheduler.rescheduleAll(container) }
+                container.activities.saveAll(EntryBuilder.build(kind, d, ctx, existing), existing = existing)
                 if (usesTimers) {
                     when (kind) {
                         EntryKind.BREASTFEED, EntryKind.COMBO -> container.timers.clear(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)
@@ -192,6 +191,12 @@ class EntryController(
                     }
                 }
                 onDone()
+                // Best-effort and several network round trips: run it on the
+                // app scope (this sheet's scope may be cancelled by dismissal)
+                // instead of making the user watch Save wait for it.
+                container.applicationScope.launch {
+                    runCatching { container.scheduler.rescheduleAll(container) }
+                }
             } catch (e: Exception) {
                 // Strict online-only: nothing is queued; the sheet stays open for retry.
                 saveError = if (e is com.lifestyle.nestly.data.supabase.ConflictException) {
@@ -215,8 +220,10 @@ class EntryController(
         scope.launch {
             try {
                 container.activities.delete(id)
-                runCatching { container.scheduler.rescheduleAll(container) }
                 onDone()
+                container.applicationScope.launch {
+                    runCatching { container.scheduler.rescheduleAll(container) }
+                }
             } catch (e: Exception) {
                 saveError = "Couldn't delete. Check your connection and try again."
             }

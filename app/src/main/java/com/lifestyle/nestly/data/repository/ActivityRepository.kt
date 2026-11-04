@@ -182,22 +182,31 @@ class ActivityRepository(
             }
         }.decodeList<ActivityDto>().map { it.toEntity() }
 
-    suspend fun save(activity: ActivityEntity) = saveAll(listOf(activity))
+    /** Saves a single row whose existence isn't known yet; pays the existence check. */
+    suspend fun save(activity: ActivityEntity) = saveAll(listOf(activity), existing = get(activity.id))
 
-    suspend fun saveAll(activities: List<ActivityEntity>) {
+    /**
+     * [existing] is the row being edited, already loaded by the caller (e.g. when
+     * the entry sheet opened). Passing it skips the existence SELECT that new
+     * entries used to pay before their INSERT — the common "log a feed" case is
+     * now a single request per row. Edits keep the version check: the update is
+     * filtered on [existing]'s version and verified by a re-read, so a row
+     * changed by someone else in the meantime still raises [ConflictException].
+     */
+    suspend fun saveAll(activities: List<ActivityEntity>, existing: ActivityEntity? = null) {
         val now = clock()
         activities.forEach { raw ->
             val withPhoto = raw.copy(photoUri = photos.uploadIfLocal(raw.photoUri, raw.familyId, raw.id))
             val prepared = withPhoto.copy(updatedAt = now)
-            val existing = get(prepared.id)
-            if (existing == null) {
+            val known = existing?.takeIf { it.id == prepared.id }
+            if (known == null) {
                 client.from("activity").insert(prepared.toDto())
             } else {
-                val updated = prepared.copy(version = existing.version + 1)
+                val updated = prepared.copy(version = known.version + 1)
                 client.from("activity").update(updated.toDto()) {
                     filter {
                         eq("id", prepared.id)
-                        eq("version", existing.version)
+                        eq("version", known.version)
                     }
                 }
                 val fresh = get(prepared.id)

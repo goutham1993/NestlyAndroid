@@ -25,6 +25,7 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.ZoneId
@@ -123,7 +124,10 @@ class QuickBottleLog(
                 newId = { UUID.randomUUID().toString() },
             )
             container.activities.saveAll(EntryBuilder.build(EntryKind.BOTTLE, draft, ctx))
-            runCatching { container.scheduler.rescheduleAll(container) }
+            // Don't make the "saved" confirmation wait on reminder scheduling.
+            container.applicationScope.launch {
+                runCatching { container.scheduler.rescheduleAll(container) }
+            }
             QuickBottleResult.Saved(ml, now)
         } catch (e: Exception) {
             if (e is CancellationException) throw e

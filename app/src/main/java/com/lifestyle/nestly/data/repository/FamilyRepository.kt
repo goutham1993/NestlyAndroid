@@ -22,14 +22,17 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import java.time.LocalDate
 import java.util.UUID
 
@@ -37,6 +40,7 @@ import java.util.UUID
 class FamilyRepository(
     private val client: SupabaseClient,
     private val prefs: UserPreferences,
+    private val scope: CoroutineScope,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val authUserId: String? get() = client.auth.currentSessionOrNull()?.user?.id
@@ -72,9 +76,19 @@ class FamilyRepository(
         }
     }
 
-    /** The selected child, falling back to the first profile when nothing is selected yet. */
+    /**
+     * The selected child, falling back to the first profile when nothing is selected yet.
+     *
+     * Shared with replay = 1 so `.first()` callers on the save path get the last
+     * known value instantly instead of starting a fresh Supabase fetch — a cold
+     * [refetchFlow] re-runs its query on every collection. Unlike a StateFlow
+     * with an initial null, a shared flow emits nothing until profiles have
+     * actually loaded, so `.first()` still suspends while loading and a
+     * not-yet-loaded value can never masquerade as "no child selected".
+     */
     val selectedProfile: Flow<ProfileEntity?> =
         combine(profiles, prefs.selectedProfileId) { all, id -> all.find { it.id == id } ?: all.firstOrNull() }
+            .shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     val caregivers: Flow<List<CaregiverEntity>> = selectedProfile.flatMapLatest { profile ->
         if (profile == null) flowOf(emptyList())
@@ -87,7 +101,7 @@ class FamilyRepository(
                 order("name", Order.ASCENDING)
             }.decodeList<CaregiverDto>().map { it.toEntity() }
         }
-    }
+    }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     /** The caregiver linked to the signed-in account, falling back to the first caregiver. */
     val currentCaregiver: Flow<CaregiverEntity?> =
@@ -95,7 +109,7 @@ class FamilyRepository(
             all.find { it.userId != null && it.userId == authUserId }
                 ?: all.find { it.id == storedId }
                 ?: all.firstOrNull()
-        }
+        }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     suspend fun currentCaregiverId(): String? = currentCaregiver.first()?.id
 

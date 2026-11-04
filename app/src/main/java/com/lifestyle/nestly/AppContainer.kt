@@ -32,8 +32,9 @@ class AppContainer(context: Context) {
     val preferences = UserPreferences(appContext)
     val timers = ActiveTimerStore(appContext)
     val photos = PhotoStore(appContext, supabase)
+    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val auth = AuthRepository(supabase)
-    val family = FamilyRepository(supabase, preferences)
+    val family = FamilyRepository(supabase, preferences, applicationScope)
     val activities = ActivityRepository(supabase, photos)
     val reminders = ReminderRepository(supabase, family)
     val appointments = AppointmentRepository(supabase)
@@ -42,7 +43,6 @@ class AppContainer(context: Context) {
     val importer = NaraCsvImporter(activities, family)
     val nestlyImporter = NestlyCsvImporter(activities, family)
     val exporter = NestlyCsvExporter(activities, family)
-    val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /** Refetch everything when connectivity returns. */
     fun startConnectivityRefresh() {

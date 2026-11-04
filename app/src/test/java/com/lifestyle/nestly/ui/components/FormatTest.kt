@@ -37,6 +37,27 @@ class FormatTest {
     }
 
     @Test
+    fun countdown() {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.of(2026, 11, 4)
+        val now = today.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+        fun at(date: LocalDate, hour: Int = 9) = date.atTime(hour, 0).atZone(zone).toInstant().toEpochMilli()
+        assertEquals("Today", Format.countdown(at(today, 9), now))
+        assertEquals("Today", Format.countdown(at(today, 18), now))
+        assertEquals("Tomorrow", Format.countdown(at(today.plusDays(1)), now))
+        assertEquals("Yesterday", Format.countdown(at(today.minusDays(1)), now))
+        assertEquals("in 2 days", Format.countdown(at(today.plusDays(2)), now))
+        assertEquals("in 13 days", Format.countdown(at(today.plusDays(13)), now))
+        assertEquals("in 2 weeks", Format.countdown(at(today.plusDays(16)), now))
+        assertEquals("in 4 weeks", Format.countdown(at(today.plusDays(29)), now))
+        assertEquals("2 weeks ago", Format.countdown(at(today.minusDays(14)), now))
+        assertEquals("1 month ago", Format.countdown(at(today.minusDays(33)), now))
+        assertEquals("in 3 months", Format.countdown(at(today.plusMonths(3)), now))
+        assertEquals("in 1 year", Format.countdown(at(today.plusYears(1)), now))
+        assertEquals("2 years ago", Format.countdown(at(today.minusYears(2)), now))
+    }
+
+    @Test
     fun nextFeeding() {
         // 7:18pm in the local zone, so the expected clock text is exact.
         val due = LocalDate.of(2026, 11, 3).atTime(19, 18)

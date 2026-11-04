@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,16 +18,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -45,8 +50,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,8 +70,11 @@ import com.lifestyle.nestly.ui.components.RowDivider
 import com.lifestyle.nestly.ui.components.SectionHeading
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -122,13 +132,20 @@ fun AppointmentsScreen(
             if (upcoming.isNotEmpty()) {
                 item { SectionHeading("Upcoming") }
                 items(upcoming, key = { it.appointment.id }) { item ->
-                    AppointmentRow(item, isPast = false, now = now) { onOpenAppointment(item.appointment.id) }
+                    AppointmentRow(
+                        item,
+                        isPast = false,
+                        isNext = item === upcoming.first(),
+                        now = now,
+                    ) { onOpenAppointment(item.appointment.id) }
                 }
             }
             if (past.isNotEmpty()) {
                 item { SectionHeading("Past") }
                 items(past, key = { it.appointment.id }) { item ->
-                    AppointmentRow(item, isPast = true, now = now) { onOpenAppointment(item.appointment.id) }
+                    AppointmentRow(item, isPast = true, isNext = false, now = now) {
+                        onOpenAppointment(item.appointment.id)
+                    }
                 }
             }
         }
@@ -136,25 +153,46 @@ fun AppointmentsScreen(
 }
 
 @Composable
-private fun AppointmentRow(item: AppointmentWithQuestions, isPast: Boolean, now: Long, onClick: () -> Unit) {
+private fun AppointmentRow(
+    item: AppointmentWithQuestions,
+    isPast: Boolean,
+    isNext: Boolean,
+    now: Long,
+    onClick: () -> Unit,
+) {
     val appt = item.appointment
     Column {
         Row(
             Modifier
                 .fillMaxWidth()
+                .then(if (isNext) Modifier.background(NestlyColors.Surface) else Modifier)
                 .clickable(onClick = onClick)
                 .heightIn(min = 82.dp)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(appt.title, style = NestlyType.RowLabel, color = NestlyColors.TextPrimary)
+                if (isNext) {
+                    Text("Next appointment", style = NestlyType.Small, color = NestlyColors.AccentText)
+                }
+                Text(
+                    appt.title,
+                    style = NestlyType.RowLabel,
+                    color = if (isPast) NestlyColors.TextSecondary else NestlyColors.TextPrimary,
+                )
                 val details = listOfNotNull(
-                    Format.dayAndTime(appt.startsAt, now),
                     appt.doctorName?.takeIf { it.isNotBlank() },
                     appt.location?.takeIf { it.isNotBlank() },
                 ).joinToString(" · ")
-                Text(details, style = NestlyType.Small, color = NestlyColors.TextSecondary)
+                if (details.isNotEmpty()) {
+                    Text(
+                        details,
+                        style = NestlyType.Small,
+                        color = NestlyColors.TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 val checkboxItems = AppointmentNotesFormat.checkboxItems(appt.notes.orEmpty())
                 val questions = when {
                     checkboxItems.isEmpty() -> null
@@ -167,11 +205,76 @@ private fun AppointmentRow(item: AppointmentWithQuestions, isPast: Boolean, now:
                     .takeIf { !isPast && it != AppointmentReminderLead.NONE }
                     ?.let { "Reminder: ${it.label.lowercase()}" }
                 listOfNotNull(questions, reminder).joinToString(" · ").takeIf { it.isNotEmpty() }?.let {
-                    Text(it, style = NestlyType.Small, color = NestlyColors.TextSecondary)
+                    Text(it, style = NestlyType.Small, color = NestlyColors.TextMuted)
                 }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                DateTile(appt.startsAt, isPast = isPast, isNext = isNext, now = now)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    Format.countdown(appt.startsAt, now),
+                    style = NestlyType.Small,
+                    fontWeight = if (isPast) FontWeight.Normal else FontWeight.SemiBold,
+                    color = if (isPast) NestlyColors.TextMuted else NestlyColors.AccentText,
+                    maxLines = 1,
+                )
             }
         }
         RowDivider()
+    }
+}
+
+private val tileWeekday = DateTimeFormatter.ofPattern("EEE", Locale.US)
+private val tileMonth = DateTimeFormatter.ofPattern("MMM", Locale.US)
+private val tileMonthYear = DateTimeFormatter.ofPattern("MMM ''yy", Locale.US)
+
+/** Calendar-style tile: weekday, day number, month (with year if not this year), then the time. */
+@Composable
+private fun DateTile(epochMs: Long, isPast: Boolean, isNext: Boolean, now: Long) {
+    val zone = ZoneId.systemDefault()
+    val date = Instant.ofEpochMilli(epochMs).atZone(zone)
+    val thisYear = Instant.ofEpochMilli(now).atZone(zone).year
+    val shape = RoundedCornerShape(14.dp)
+    val labelColor = if (isNext) NestlyColors.TextPrimary else NestlyColors.TextSecondary
+    val valueColor = if (isPast) NestlyColors.TextSecondary else NestlyColors.TextPrimary
+    Column(
+        Modifier
+            .width(80.dp)
+            .then(
+                when {
+                    isNext -> Modifier.background(NestlyColors.Accent, shape)
+                    isPast -> Modifier.border(1.dp, NestlyColors.Divider, shape)
+                    else -> Modifier.background(NestlyColors.SurfaceRaised, shape)
+                },
+            )
+            .padding(top = 6.dp, bottom = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(tileWeekday.format(date), style = NestlyType.Small, color = labelColor)
+        Text(
+            date.dayOfMonth.toString(),
+            style = NestlyType.CardTitle,
+            color = valueColor,
+        )
+        Text(
+            (if (date.year == thisYear) tileMonth else tileMonthYear).format(date),
+            style = NestlyType.Small,
+            color = labelColor,
+        )
+        HorizontalDivider(
+            Modifier.padding(top = 5.dp, start = 8.dp, end = 8.dp),
+            thickness = 1.dp,
+            color = if (isNext) NestlyColors.AccentText else NestlyColors.Divider,
+        )
+        Text(
+            Format.time(epochMs),
+            style = NestlyType.Small,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor,
+            modifier = Modifier.padding(top = 5.dp),
+            maxLines = 1,
+        )
     }
 }
 

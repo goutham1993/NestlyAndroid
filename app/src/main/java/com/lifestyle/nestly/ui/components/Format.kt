@@ -8,6 +8,7 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -37,6 +38,29 @@ object Format {
     /** "Today  8:07pm" */
     fun dayAndTime(epochMs: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         "${relativeDay(epochMs, now, zone)}  ${time(epochMs, zone)}"
+
+    /**
+     * Calendar-day distance from today: "Today", "Tomorrow", "in 5 days", "in 2 weeks",
+     * "in 3 months", "in 1 year", or the past equivalents ("Yesterday", "2 weeks ago").
+     */
+    fun countdown(epochMs: Long, now: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+        val date = Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate()
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val future = !date.isBefore(today)
+        val (from, to) = if (future) today to date else date to today
+        val days = ChronoUnit.DAYS.between(from, to)
+        val months = ChronoUnit.MONTHS.between(from, to)
+        fun unit(value: Long, name: String) = "$value $name${if (value == 1L) "" else "s"}"
+        val amount = when {
+            days == 0L -> return "Today"
+            days == 1L -> return if (future) "Tomorrow" else "Yesterday"
+            days < 14 -> unit(days, "day")
+            days < 30 || months == 0L -> unit(days / 7, "week")
+            months < 12 -> unit(months, "month")
+            else -> unit(months / 12, "year")
+        }
+        return if (future) "in $amount" else "$amount ago"
+    }
 
     /** "Thu, Oct 1" */
     fun headerDate(now: Long, zone: ZoneId = ZoneId.systemDefault()): String =

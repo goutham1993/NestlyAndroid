@@ -146,7 +146,7 @@ fun EmptyCardRow(icon: IconKind, text: String, onClick: () -> Unit) {
     }
 }
 
-/** "Next feeding in 1 hour 25 minutes at 7:18pm", in the Feed card above Show More / Show Less. */
+/** "Next feeding in 1h 25m at 7:18pm", in the Feed card above Show More / Show Less. */
 @Composable
 fun NextFeedingRow(state: NextFeedState) {
     val text = Format.nextFeeding(state) ?: return

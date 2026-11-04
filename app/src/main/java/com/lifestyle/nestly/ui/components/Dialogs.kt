@@ -219,7 +219,8 @@ private fun SpinnerTimePickerDialog(
 
 /**
  * Date picker followed by a time picker (unless [dateOnly]). Returns the chosen epoch millis in the
- * device zone.
+ * device zone. With [timeOnly] it skips straight to the time picker, keeping [initial]'s date —
+ * for rows where the date is usually today and only the time needs changing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -228,10 +229,13 @@ fun DateTimePickerDialog(
     dateOnly: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (Long) -> Unit,
+    timeOnly: Boolean = false,
 ) {
     val zone = ZoneId.systemDefault()
     val initialZoned = Instant.ofEpochMilli(initial).atZone(zone)
-    var pickedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var pickedDate by remember {
+        mutableStateOf<LocalDate?>(if (timeOnly && !dateOnly) initialZoned.toLocalDate() else null)
+    }
     val dateState = rememberDatePickerState(
         initialSelectedDateMillis = initialZoned.toLocalDate().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
     )

@@ -79,6 +79,56 @@ fun FormRow(
     }
 }
 
+/**
+ * Like [FormRow], but the value is two independently tappable parts — e.g. a date ("Today") and a
+ * time ("8:07pm", or a bold "Add" while unset) — so each part can open its own picker. Tapping the
+ * label itself does nothing.
+ */
+@Composable
+fun SplitValueFormRow(
+    label: String,
+    firstValue: String,
+    secondValue: String,
+    secondIsAction: Boolean = false,
+    onFirstClick: () -> Unit,
+    onSecondClick: () -> Unit,
+) {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 82.dp)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, style = NestlyType.RowLabel, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
+            Text(
+                firstValue,
+                style = NestlyType.Body,
+                color = NestlyColors.TextPrimary,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .clickable(onClick = onFirstClick)
+                    .padding(horizontal = 6.dp, vertical = 12.dp),
+            )
+            Text(
+                secondValue,
+                style = if (secondIsAction) {
+                    NestlyType.BodyMedium.copy(fontWeight = FontWeight.Bold)
+                } else {
+                    NestlyType.Body
+                },
+                color = NestlyColors.TextPrimary,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .clickable(onClick = onSecondClick)
+                    .padding(horizontal = 6.dp, vertical = 12.dp),
+            )
+        }
+        RowDivider()
+    }
+}
+
 @Composable
 fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier) {

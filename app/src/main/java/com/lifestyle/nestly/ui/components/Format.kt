@@ -100,30 +100,29 @@ object Format {
     }
 
     /**
-     * "Next feeding in 1 hour 25 minutes at 7:18pm", or how long it is
+     * "Next feeding in 1h 25m at 7:18pm", or how long it is
      * overdue once that time has passed. Null when no feed has been logged.
      * Whole minutes only: callers tick at most every 30 seconds.
      */
     fun nextFeeding(state: NextFeedState): String? = when (state) {
         is NextFeedState.Upcoming ->
-            "Next feeding in ${durationWords(state.remainingMs, roundUp = true)} at ${time(state.dueMs)}"
+            "Next feeding in ${durationShort(state.remainingMs, roundUp = true)} at ${time(state.dueMs)}"
         is NextFeedState.DueNow -> "Next feeding due now"
         is NextFeedState.Overdue ->
-            "Next feeding overdue by ${durationWords(state.overdueMs, roundUp = false)} · due ${time(state.dueMs)}"
+            "Next feeding overdue by ${durationShort(state.overdueMs, roundUp = false)} · due ${time(state.dueMs)}"
         NextFeedState.NoFeed -> null
     }
 
-    /** "1 minute", "25 minutes", "1 hour", "1 hour 25 minutes", "1 day 2 hours". */
-    private fun durationWords(ms: Long, roundUp: Boolean): String {
+    /** "1m", "25m", "1h", "1h 25m", "1d 2h". */
+    private fun durationShort(ms: Long, roundUp: Boolean): String {
         val totalMinutes = ((if (roundUp) ms + 59_999L else ms) / 60_000L).coerceAtLeast(1)
         val days = totalMinutes / (24 * 60)
         val hours = (totalMinutes % (24 * 60)) / 60
         val minutes = totalMinutes % 60
-        fun unit(value: Long, name: String) = "$value $name${if (value == 1L) "" else "s"}"
         val parts = listOfNotNull(
-            days.takeIf { it > 0 }?.let { unit(it, "day") },
-            hours.takeIf { it > 0 }?.let { unit(it, "hour") },
-            minutes.takeIf { it > 0 || (days == 0L && hours == 0L) }?.let { unit(it, "minute") },
+            days.takeIf { it > 0 }?.let { "${it}d" },
+            hours.takeIf { it > 0 }?.let { "${it}h" },
+            minutes.takeIf { it > 0 || (days == 0L && hours == 0L) }?.let { "${it}m" },
         )
         return parts.joinToString(" ")
     }

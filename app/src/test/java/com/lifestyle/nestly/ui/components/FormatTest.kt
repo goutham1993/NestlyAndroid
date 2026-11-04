@@ -42,25 +42,29 @@ class FormatTest {
         val due = LocalDate.of(2026, 11, 3).atTime(19, 18)
             .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         assertEquals(
-            "Next feeding in 1 hour 25 minutes at 7:18pm",
+            "Next feeding in 1h 25m at 7:18pm",
             Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 85 * minute)),
         )
         assertEquals(
-            "Next feeding in 1 hour at 7:18pm",
+            "Next feeding in 1h 17m at 7:18pm",
+            Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 77 * minute)),
+        )
+        assertEquals(
+            "Next feeding in 1h at 7:18pm",
             Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 60 * minute)),
         )
         assertEquals(
-            "Next feeding in 1 minute at 7:18pm",
+            "Next feeding in 1m at 7:18pm",
             Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = minute)),
         )
         // A partial final minute still counts as a minute to go.
         assertEquals(
-            "Next feeding in 1 minute at 7:18pm",
+            "Next feeding in 1m at 7:18pm",
             Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 30_000)),
         )
         assertEquals("Next feeding due now", Format.nextFeeding(NextFeedState.DueNow(due)))
         assertEquals(
-            "Next feeding overdue by 42 minutes · due 7:18pm",
+            "Next feeding overdue by 42m · due 7:18pm",
             Format.nextFeeding(NextFeedState.Overdue(dueMs = due, overdueMs = 42 * minute)),
         )
         assertNull(Format.nextFeeding(NextFeedState.NoFeed))

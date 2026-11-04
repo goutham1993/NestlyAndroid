@@ -32,9 +32,12 @@ import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
 import com.lifestyle.nestly.ui.components.NotesField
 import com.lifestyle.nestly.ui.components.RowDivider
+import com.lifestyle.nestly.ui.components.SplitValueFormRow
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
 import com.lifestyle.nestly.ui.theme.headerColor
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.delay
 
 /** What every form receives: the controller plus live timers and clock. */
@@ -119,6 +122,9 @@ fun ColumnScope.NotesAndPhoto(form: FormScope) {
 
 /**
  * "Start Time  Today 8:07pm". Shows "Today  Add" until a time is picked or a timer sets it.
+ * The date and the time are separate tap targets: tapping the date ("Today", "Sep 30", …) opens
+ * only the date picker — keeping the current time of day — while tapping the time (or "Add")
+ * opens only the time picker, keeping the current date, which is today in the common case.
  * [endTime] switches the row to edit the end time instead.
  */
 @Composable
@@ -128,32 +134,70 @@ fun TimeRow(
     dateOnly: Boolean = false,
     endTime: Boolean = false,
 ) {
-    var picking by remember { mutableStateOf(false) }
+    var pickingDate by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     val effective = form.effective
     val value: Long? = if (endTime) effective.endTime else effective.startTime.takeIf {
         effective.startTimeSet || it != form.draft.startTime
     }
-    val shown = when {
-        value == null -> "Today" to "Add"
-        dateOnly -> Format.relativeDay(value, form.now) to null
-        else -> Format.dayAndTime(value, form.now) to null
+    val zone = ZoneId.systemDefault()
+
+    fun applyPicked(picked: Long) {
+        form.update {
+            if (endTime) it.copy(endTime = picked)
+            else it.copy(
+                startTime = picked,
+                startTimeSet = true,
+                endTime = it.endTime?.takeIf { end -> end >= picked },
+            )
+        }
     }
-    FormRow(label, value = shown.first, action = shown.second, onClick = { picking = true })
-    if (picking) {
+
+    if (dateOnly) {
+        FormRow(
+            label,
+            value = value?.let { Format.relativeDay(it, form.now) } ?: "Today",
+            action = if (value == null) "Add" else null,
+            onClick = { pickingDate = true },
+        )
+    } else {
+        SplitValueFormRow(
+            label = label,
+            firstValue = value?.let { Format.relativeDay(it, form.now) } ?: "Today",
+            secondValue = value?.let { Format.time(it) } ?: "Add",
+            secondIsAction = value == null,
+            onFirstClick = { pickingDate = true },
+            onSecondClick = { pickingTime = true },
+        )
+    }
+    if (pickingDate) {
         DateTimePickerDialog(
             initial = value ?: form.now,
-            dateOnly = dateOnly,
-            onDismiss = { picking = false },
+            dateOnly = true,
+            onDismiss = { pickingDate = false },
             onConfirm = { picked ->
-                picking = false
-                form.update {
-                    if (endTime) it.copy(endTime = picked)
-                    else it.copy(
-                        startTime = picked,
-                        startTimeSet = true,
-                        endTime = it.endTime?.takeIf { end -> end >= picked },
-                    )
+                pickingDate = false
+                // [picked] is the start of the chosen day; time rows keep their time of day.
+                val combined = if (dateOnly) {
+                    picked
+                } else {
+                    val date = Instant.ofEpochMilli(picked).atZone(zone).toLocalDate()
+                    val time = Instant.ofEpochMilli(value ?: form.now).atZone(zone).toLocalTime()
+                    date.atTime(time).atZone(zone).toInstant().toEpochMilli()
                 }
+                applyPicked(combined)
+            },
+        )
+    }
+    if (pickingTime) {
+        DateTimePickerDialog(
+            initial = value ?: form.now,
+            dateOnly = false,
+            timeOnly = true,
+            onDismiss = { pickingTime = false },
+            onConfirm = { picked ->
+                pickingTime = false
+                applyPicked(picked)
             },
         )
     }

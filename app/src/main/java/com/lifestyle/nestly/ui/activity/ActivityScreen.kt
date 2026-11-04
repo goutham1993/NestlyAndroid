@@ -75,6 +75,7 @@ fun ActivityTab(
     val now by viewModel.now.collectAsStateWithLifecycle()
     val layout by viewModel.layout.collectAsStateWithLifecycle()
     val timers by viewModel.timers.collectAsStateWithLifecycle()
+    val feedIntervalMinutes by viewModel.feedIntervalMinutes.collectAsStateWithLifecycle()
 
     var showSummary by remember { mutableStateOf(false) }
     var showFeedPicker by remember { mutableStateOf(false) }
@@ -144,6 +145,7 @@ fun ActivityTab(
                         startOfToday = viewModel.startOfDay(now),
                         layout = layout,
                         timers = timers,
+                        feedIntervalMinutes = feedIntervalMinutes,
                         onOpenEntry = onOpenEntry,
                         onFeedPicker = { showFeedPicker = true },
                         onShowHistory = onShowHistory,

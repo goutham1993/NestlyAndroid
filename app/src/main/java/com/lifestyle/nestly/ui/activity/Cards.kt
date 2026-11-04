@@ -16,6 +16,7 @@ import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.prefs.ActivityLayout
 import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.data.prefs.CardKind
+import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.timer.TimerKey
 import com.lifestyle.nestly.data.timer.TimerState
 import com.lifestyle.nestly.data.units.Units
@@ -36,6 +37,8 @@ class CardContext(
     val startOfToday: Long,
     val layout: ActivityLayout,
     val timers: Map<TimerKey, TimerState>,
+    /** Feed interval (minutes) from Reminders; estimates the next feeding. */
+    val feedIntervalMinutes: Int,
     val onOpenEntry: (EntryRequest) -> Unit,
     val onFeedPicker: () -> Unit,
     val onShowHistory: () -> Unit,
@@ -121,6 +124,10 @@ private fun FeedCard(ctx: CardContext) {
             ctx.elapsed(TimerKey.BREAST_LEFT, TimerKey.BREAST_RIGHT)?.let { sec ->
                 InProgressRow(IconKind.BREAST, "Breastfeeding", Format.duration(sec)) { ctx.new(EntryKind.BREASTFEED) }
             }
+        }
+        // Above the Show More / Show Less row that TodayList renders.
+        if (latest != null) {
+            NextFeedingRow(ReminderLogic.nextFeedState(latest.startTime, ctx.feedIntervalMinutes, ctx.now))
         }
         TodayList(ctx, CardKind.FEED, showIcons = true, defaultExpanded = true)
     }

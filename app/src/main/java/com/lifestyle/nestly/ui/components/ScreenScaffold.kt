@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,7 +45,10 @@ fun DetailScreen(
         Modifier
             .fillMaxSize()
             .background(NestlyColors.Background)
-            .statusBarsPadding(),
+            .statusBarsPadding()
+            // Shrink (rather than be covered by) the keyboard so scrollable
+            // content — e.g. the appointment notes field — can scroll above it.
+            .imePadding(),
     ) {
         Row(
             Modifier

@@ -6,7 +6,9 @@ import com.lifestyle.nestly.AppContainer
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.ProfileEntity
+import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.prefs.ActivityLayout
+import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.data.timer.TimerKey
 import com.lifestyle.nestly.data.timer.TimerState
@@ -47,6 +49,30 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
 
     val timers: StateFlow<Map<TimerKey, TimerState>> = container.timers.timers
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    /**
+     * Feed interval set in Reminders, used to estimate the next feeding on
+     * the Feed card. Kept separate from [data] so the dashboard still loads
+     * if the reminder fetch fails; falls back to the default (3h) until the
+     * saved interval arrives, exactly like the nightstand does. The
+     * reminder's on/off switch is ignored — this is an estimate, not an alert.
+     */
+    val feedIntervalMinutes: StateFlow<Int> = container.family.selectedProfile
+        .flatMapLatest { profile ->
+            if (profile == null) {
+                flowOf(ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED))
+            } else {
+                container.reminders.observeForProfile(profile.familyId, profile.id).map { reminders ->
+                    reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes
+                        ?: ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED)
+                }
+            }
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED),
+        )
 
     /** Ticks every second while a timer runs, otherwise every 30 seconds. */
     val now: StateFlow<Long> = timers

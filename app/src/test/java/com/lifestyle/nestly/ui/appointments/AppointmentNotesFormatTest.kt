@@ -64,4 +64,90 @@ class AppointmentNotesFormatTest {
         val result = AppointmentNotesFormat.formatCurrentLine(text, 2, NoteLineFormat.BULLET)
         assertEquals("• first line\nsecond line", result.text)
     }
+
+    @Test
+    fun enterContinuesBullet() {
+        val text = "• First\n"
+        val result = AppointmentNotesFormat.continueListAfterEnter(text, text.length)
+        assertEquals("• First\n• ", result?.text)
+        assertEquals(result?.text?.length, result?.cursor)
+    }
+
+    @Test
+    fun enterContinuesCheckboxAsUnchecked() {
+        val text = "☑ Done thing\n"
+        val result = AppointmentNotesFormat.continueListAfterEnter(text, text.length)
+        assertEquals("☑ Done thing\n☐ ", result?.text)
+    }
+
+    @Test
+    fun enterIncrementsNumberedAndRenumbersFollowing() {
+        val text = "1. First\n\n2. Second"
+        // Cursor sits on the blank line created by pressing Enter after "1. First".
+        val result = AppointmentNotesFormat.continueListAfterEnter(text, "1. First\n".length)
+        assertEquals("1. First\n2. \n3. Second", result?.text)
+        assertEquals("1. First\n2. ".length, result?.cursor)
+    }
+
+    @Test
+    fun enterSplitsLineCarryingRemainderIntoNewItem() {
+        val text = "• FooBar"
+        val rawAfterEnter = "• Foo\nBar"
+        val result = AppointmentNotesFormat.continueListAfterEnter(rawAfterEnter, "• Foo\n".length)
+        assertEquals("• Foo\n• Bar", result?.text)
+    }
+
+    @Test
+    fun enterOnEmptyListItemExitsList() {
+        val text = "• First\n• \n"
+        val result = AppointmentNotesFormat.continueListAfterEnter(text, text.length)
+        assertEquals("• First\n\n", result?.text)
+        assertEquals(result?.text?.length, result?.cursor)
+
+        val numbered = "1. First\n2. \n"
+        assertEquals(
+            "1. First\n\n",
+            AppointmentNotesFormat.continueListAfterEnter(numbered, numbered.length)?.text,
+        )
+    }
+
+    @Test
+    fun enterOnPlainLineDoesNothing() {
+        val text = "just a note\n"
+        assertEquals(null, AppointmentNotesFormat.continueListAfterEnter(text, text.length))
+        assertEquals(null, AppointmentNotesFormat.continueListAfterEnter("no newline", 4))
+    }
+
+    @Test
+    fun continueListOnEnterOnlyFiresForSingleNewlineInsertion() {
+        val result = AppointmentNotesFormat.continueListOnEnter(
+            oldText = "• First",
+            oldSelectionStart = "• First".length,
+            oldSelectionEnd = "• First".length,
+            newText = "• First\n",
+            newCursor = "• First\n".length,
+        )
+        assertEquals("• First\n• ", result?.text)
+
+        // Ordinary typing, deletions and multi-char pastes are left alone.
+        assertEquals(
+            null,
+            AppointmentNotesFormat.continueListOnEnter("• First", 7, 7, "• Firstx", 8),
+        )
+        assertEquals(
+            null,
+            AppointmentNotesFormat.continueListOnEnter("• First", 7, 7, "• Firs", 6),
+        )
+        assertEquals(
+            null,
+            AppointmentNotesFormat.continueListOnEnter("• First", 7, 7, "• First\n\n", 9),
+        )
+    }
+
+    @Test
+    fun numberedFormatRestartsAfterNonNumberedLine() {
+        val text = "1. First\n• a bullet\nNew item"
+        val result = AppointmentNotesFormat.formatCurrentLine(text, text.length, NoteLineFormat.NUMBERED)
+        assertEquals("1. First\n• a bullet\n1. New item", result.text)
+    }
 }

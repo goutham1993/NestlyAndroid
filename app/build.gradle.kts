@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
+    implementation(libs.androidx.work.runtime.ktx)
     debugImplementation(libs.compose.ui.tooling)
 
     implementation(platform(libs.supabase.bom))

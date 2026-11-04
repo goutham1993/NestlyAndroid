@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.prefs.CardKind
+import com.lifestyle.nestly.data.reminder.NextFeedState
 import com.lifestyle.nestly.ui.components.ActivityIcon
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.IconKind
@@ -141,6 +143,33 @@ fun EmptyCardRow(icon: IconKind, text: String, onClick: () -> Unit) {
         ActivityIcon(icon, size = 72.dp)
         Spacer(Modifier.width(22.dp))
         Text(text, style = NestlyType.CardLead, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
+    }
+}
+
+/** "Next feeding in 1 hour 25 minutes at 7:18pm", in the Feed card above Show More / Show Less. */
+@Composable
+fun NextFeedingRow(state: NextFeedState) {
+    val text = Format.nextFeeding(state) ?: return
+    val due = state is NextFeedState.DueNow || state is NextFeedState.Overdue
+    RowDivider()
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Outlined.Schedule,
+            null,
+            tint = if (due) NestlyColors.Danger else NestlyColors.Feed,
+            modifier = Modifier.size(22.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            text,
+            style = NestlyType.BodyMedium,
+            color = if (due) NestlyColors.Danger else NestlyColors.TextPrimary,
+        )
     }
 }
 

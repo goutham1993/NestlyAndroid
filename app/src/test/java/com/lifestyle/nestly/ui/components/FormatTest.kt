@@ -1,9 +1,11 @@
 package com.lifestyle.nestly.ui.components
 
+import com.lifestyle.nestly.data.reminder.NextFeedState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
+import java.time.ZoneId
 
 class FormatTest {
     private val minute = 60_000L
@@ -32,6 +34,36 @@ class FormatTest {
         assertEquals("1 year, 3 months old", Format.age(birth, birth.plusYears(1).plusMonths(3)))
         assertEquals("2 years old", Format.age(birth, birth.plusYears(2)))
         assertNull(Format.age(birth, birth.minusDays(1)))
+    }
+
+    @Test
+    fun nextFeeding() {
+        // 7:18pm in the local zone, so the expected clock text is exact.
+        val due = LocalDate.of(2026, 11, 3).atTime(19, 18)
+            .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        assertEquals(
+            "Next feeding in 1 hour 25 minutes at 7:18pm",
+            Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 85 * minute)),
+        )
+        assertEquals(
+            "Next feeding in 1 hour at 7:18pm",
+            Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 60 * minute)),
+        )
+        assertEquals(
+            "Next feeding in 1 minute at 7:18pm",
+            Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = minute)),
+        )
+        // A partial final minute still counts as a minute to go.
+        assertEquals(
+            "Next feeding in 1 minute at 7:18pm",
+            Format.nextFeeding(NextFeedState.Upcoming(dueMs = due, remainingMs = 30_000)),
+        )
+        assertEquals("Next feeding due now", Format.nextFeeding(NextFeedState.DueNow(due)))
+        assertEquals(
+            "Next feeding overdue by 42 minutes · due 7:18pm",
+            Format.nextFeeding(NextFeedState.Overdue(dueMs = due, overdueMs = 42 * minute)),
+        )
+        assertNull(Format.nextFeeding(NextFeedState.NoFeed))
     }
 
     @Test

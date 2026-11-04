@@ -98,6 +98,8 @@ fun NightstandScreen(
                         "Feed added successfully: ${Format.volume(result.ml, state?.units ?: com.lifestyle.nestly.data.units.UnitPrefs.DEFAULT)} at ${Format.time(result.atMs)}"
                     QuickBottleResult.NotSignedIn ->
                         "Couldn't add feed. Open Nestly and sign in first."
+                    QuickBottleResult.SessionNotReady ->
+                        "Couldn't add feed yet — sign-in is still loading. Check your connection and tap again."
                     QuickBottleResult.NoChild ->
                         "Couldn't add feed. Open Nestly and select a child first."
                     QuickBottleResult.NoAmount ->

@@ -2,18 +2,24 @@ package com.lifestyle.nestly.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
@@ -27,18 +33,25 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.lifestyle.nestly.ui.theme.NestlyColors
@@ -48,10 +61,161 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 @Composable
 private fun DialogButton(text: String, onClick: () -> Unit) =
     TextButton(onClick = onClick) { Text(text, color = NestlyColors.AccentText, style = NestlyType.Button) }
+
+// Flat grey spinner picker matching the legacy Android TimePicker in the reference screenshot:
+// three wheels (hour / minute / AM-PM), selected row in white between two rules, neighbours dimmed.
+private val SpinnerPickerBackground = Color(0xFF4D4D4D)
+private val SpinnerPickerRule = Color(0xFFCFCFCF)
+private val SpinnerPickerDimmed = Color(0xFFA6A6A6)
+private val SpinnerPickerItemHeight = 56.dp
+
+@Composable
+private fun WheelPickerColumn(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelectedIndexChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // One blank row above and below the values lets the first/last value sit in the middle row.
+    // With three rows visible, firstVisibleItemIndex therefore equals the selected index.
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    val scope = rememberCoroutineScope()
+    val centeredIndex by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex.coerceIn(0, items.lastIndex) }
+    }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.isScrollInProgress }
+            .filter { !it }
+            .collect {
+                onSelectedIndexChange(listState.firstVisibleItemIndex.coerceIn(0, items.lastIndex))
+            }
+    }
+
+    Box(modifier.height(SpinnerPickerItemHeight * 3)) {
+        LazyColumn(
+            state = listState,
+            flingBehavior = rememberSnapFlingBehavior(listState),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(items.size + 2) { position ->
+                if (position == 0 || position == items.size + 1) {
+                    Spacer(Modifier.fillMaxWidth().height(SpinnerPickerItemHeight))
+                } else {
+                    val itemIndex = position - 1
+                    val isCentered = itemIndex == centeredIndex
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(SpinnerPickerItemHeight)
+                            .clickable(enabled = !isCentered) {
+                                scope.launch { listState.animateScrollToItem(itemIndex) }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            items[itemIndex],
+                            color = if (isCentered) Color.White else SpinnerPickerDimmed,
+                            fontSize = 18.sp,
+                            fontWeight = if (isCentered) FontWeight.Medium else FontWeight.Normal,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
+        }
+        // Rules above and below the selected (middle) row, with a gap between columns.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+                .offset(y = SpinnerPickerItemHeight)
+                .height(1.dp)
+                .background(SpinnerPickerRule),
+        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp)
+                .offset(y = SpinnerPickerItemHeight * 2)
+                .height(1.dp)
+                .background(SpinnerPickerRule),
+        )
+    }
+}
+
+@Composable
+private fun SpinnerTimePickerDialog(
+    initialHour24: Int,
+    initialMinute: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (hour24: Int, minute: Int) -> Unit,
+) {
+    var hourIndex by remember { mutableIntStateOf((initialHour24 + 11) % 12) } // 0 -> "1" ... 11 -> "12"
+    var minute by remember { mutableIntStateOf(initialMinute) }
+    var amPmIndex by remember { mutableIntStateOf(if (initialHour24 >= 12) 1 else 0) } // 0 AM, 1 PM
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth(0.82f)
+                .widthIn(max = 340.dp)
+                .background(SpinnerPickerBackground)
+                .padding(horizontal = 28.dp, vertical = 20.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                WheelPickerColumn(
+                    items = (1..12).map { it.toString() },
+                    selectedIndex = hourIndex,
+                    onSelectedIndexChange = { hourIndex = it },
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    ":",
+                    color = SpinnerPickerDimmed,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(20.dp),
+                )
+                WheelPickerColumn(
+                    items = (0..59).map { it.toString().padStart(2, '0') },
+                    selectedIndex = minute,
+                    onSelectedIndexChange = { minute = it },
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(12.dp))
+                WheelPickerColumn(
+                    items = listOf("AM", "PM"),
+                    selectedIndex = amPmIndex,
+                    onSelectedIndexChange = { amPmIndex = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(Modifier.height(28.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = onDismiss) {
+                    Text("CANCEL", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.width(8.dp))
+                TextButton(
+                    onClick = {
+                        val hour12 = hourIndex + 1
+                        onConfirm((hour12 % 12) + if (amPmIndex == 1) 12 else 0, minute)
+                    },
+                ) {
+                    Text("OK", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
 
 /**
  * Date picker followed by a time picker (unless [dateOnly]). Returns the chosen epoch millis in the
@@ -97,18 +261,13 @@ fun DateTimePickerDialog(
             )
         }
     } else {
-        val timeState = rememberTimePickerState(initialZoned.hour, initialZoned.minute, is24Hour = false)
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            containerColor = NestlyColors.Surface,
-            confirmButton = {
-                DialogButton("OK") {
-                    onConfirm(date.atTime(LocalTime.of(timeState.hour, timeState.minute)).atZone(zone).toInstant().toEpochMilli())
-                }
-            },
-            dismissButton = { DialogButton("Cancel", onDismiss) },
-            text = { TimePicker(timeState) },
-        )
+        SpinnerTimePickerDialog(
+            initialHour24 = initialZoned.hour,
+            initialMinute = initialZoned.minute,
+            onDismiss = onDismiss,
+        ) { hour24, minute ->
+            onConfirm(date.atTime(LocalTime.of(hour24, minute)).atZone(zone).toInstant().toEpochMilli())
+        }
     }
 }
 

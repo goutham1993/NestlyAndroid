@@ -21,8 +21,10 @@ import io.github.jan.supabase.SupabaseClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AppContainer(context: Context) {
     val appContext: Context = context.applicationContext
@@ -55,11 +57,19 @@ class AppContainer(context: Context) {
     /** Keeps the Realtime subscription pointed at the signed-in user's family. */
     fun startRealtimeSync() {
         applicationScope.launch {
-            auth.userId.collect { userId ->
+            auth.userId.distinctUntilChanged().collect { userId ->
                 if (userId == null) {
                     realtime.unsubscribe()
                 } else runCatching {
-                    val profile = runCatching { family.selectedProfile.first() }.getOrNull()
+                    // selectedProfile.first() can suspend forever on a cold
+                    // start: refetchFlow emits nothing when its first fetch
+                    // fails (e.g. raced session restore), so waiting without a
+                    // bound blocks this collector and subscribe() is never
+                    // reached. Bound it and fall back to the direct fetches,
+                    // which fail fast instead of hanging.
+                    val profile = withTimeoutOrNull(SELECTED_PROFILE_WAIT_MS) {
+                        runCatching { family.selectedProfile.first() }.getOrNull()
+                    }
                     val familyId = profile?.familyId
                         ?: runCatching { family.fetchProfiles().firstOrNull()?.familyId }.getOrNull()
                         ?: runCatching { family.fetchFamilies().firstOrNull()?.id }.getOrNull()
@@ -67,6 +77,10 @@ class AppContainer(context: Context) {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val SELECTED_PROFILE_WAIT_MS = 20_000L
     }
 }
 

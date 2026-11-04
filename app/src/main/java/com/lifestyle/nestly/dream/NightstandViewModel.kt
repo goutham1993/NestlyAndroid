@@ -16,14 +16,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.ZoneId
 
@@ -51,17 +49,38 @@ class NightstandViewModel(
 ) {
     private val zone: ZoneId get() = ZoneId.systemDefault()
 
+    // Written by the session collector, read by the periodic refresher.
+    @Volatile
+    private var authenticated = false
+
     init {
+        // A dream can cold-start the process while the stored Supabase session
+        // is still being restored (Initializing / RefreshFailure can last well
+        // past any short wait — token refresh retries are ~10s apart; see
+        // QuickBottleLog). The old one-shot 5s wait gave up before the session
+        // landed on exactly those cold starts, so nothing ever refetched again
+        // and the dream sat on its initial (or empty) fetch forever. Instead:
+        // refetch the moment the session becomes Authenticated, however long
+        // that takes, for as long as the dream runs.
         scope.launch {
-            // A dream can cold-start the process while the stored Supabase
-            // session is still being restored; querying earlier returns no
-            // profiles under RLS. Once the session lands, refetch everything.
-            val session = withTimeoutOrNull(SESSION_WAIT_MS) {
-                container.auth.sessionStatus.first {
-                    it is SessionStatus.Authenticated || it is SessionStatus.NotAuthenticated
+            container.auth.sessionStatus
+                .map { it is SessionStatus.Authenticated }
+                .distinctUntilChanged()
+                .collect { isAuthenticated ->
+                    authenticated = isAuthenticated
+                    if (isAuthenticated) container.realtime.refreshAll()
                 }
+        }
+        // Belt-and-suspenders while dreaming: Realtime is the live path, but
+        // if its subscribe never landed (cold-start race, dead socket) there
+        // is no other recovery. A plugged-in/docked dream can afford to
+        // refetch outright every minute; refetchFlow keeps the last good
+        // value if a fetch fails, so a transient miss costs nothing.
+        scope.launch {
+            while (true) {
+                delay(PERIODIC_REFRESH_MS)
+                if (authenticated) container.realtime.refreshAll()
             }
-            if (session is SessionStatus.Authenticated) container.realtime.refreshAll()
         }
     }
 
@@ -142,6 +161,6 @@ class NightstandViewModel(
 
     private companion object {
         const val DAY_MS = 24 * 60 * 60 * 1000L
-        const val SESSION_WAIT_MS = 5_000L
+        const val PERIODIC_REFRESH_MS = 60_000L
     }
 }

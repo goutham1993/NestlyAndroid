@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Subject
 import androidx.compose.material3.AlertDialog
@@ -124,6 +125,14 @@ fun ActivityTab(
                                     onClick = {
                                         showMenu = false
                                         navigate(Routes.APPOINTMENTS)
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Notes", style = NestlyType.RowLabel) },
+                                    leadingIcon = { Icon(Icons.Outlined.EditNote, null, tint = NestlyColors.TextPrimary) },
+                                    onClick = {
+                                        showMenu = false
+                                        navigate(Routes.NOTES)
                                     },
                                 )
                                 DropdownMenuItem(

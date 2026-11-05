@@ -12,6 +12,7 @@ import com.lifestyle.nestly.data.repository.ActivityRepository
 import com.lifestyle.nestly.data.repository.AppointmentRepository
 import com.lifestyle.nestly.data.repository.AuthRepository
 import com.lifestyle.nestly.data.repository.FamilyRepository
+import com.lifestyle.nestly.data.repository.NoteRepository
 import com.lifestyle.nestly.data.repository.ReminderRepository
 import com.lifestyle.nestly.data.supabase.PhotoStore
 import com.lifestyle.nestly.data.supabase.RealtimeManager
@@ -38,6 +39,7 @@ class AppContainer(context: Context) {
     val activities = ActivityRepository(supabase, photos)
     val reminders = ReminderRepository(supabase, family)
     val appointments = AppointmentRepository(supabase)
+    val notes = NoteRepository(supabase)
     val realtime = RealtimeManager(supabase, CoroutineScope(SupervisorJob() + Dispatchers.IO))
     val scheduler = ReminderScheduler(appContext)
     val importer = NaraCsvImporter(activities, family)

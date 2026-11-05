@@ -18,6 +18,7 @@ import com.lifestyle.nestly.data.model.MealType
 import com.lifestyle.nestly.data.model.MedicalDetails
 import com.lifestyle.nestly.data.model.MilestoneDetails
 import com.lifestyle.nestly.data.model.MilkType
+import com.lifestyle.nestly.data.model.NoteEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.ProfileType
 import com.lifestyle.nestly.data.model.PumpDetails
@@ -358,6 +359,43 @@ fun AppointmentQuestionEntity.toDto() = AppointmentQuestionDto(
     text = text,
     isDone = isDone,
     sortOrder = sortOrder,
+    createdAt = createdAt.toIso(),
+    updatedAt = updatedAt.toIso(),
+    deletedAt = deletedAt?.toIso(),
+    version = version,
+)
+
+@Serializable
+data class NoteDto(
+    val id: String,
+    @SerialName("family_id") val familyId: String,
+    @SerialName("profile_id") val profileId: String,
+    val title: String = "",
+    val body: String = "",
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    val version: Int = 1,
+) {
+    fun toEntity() = NoteEntity(
+        id = id,
+        familyId = familyId,
+        profileId = profileId,
+        title = title,
+        body = body,
+        createdAt = createdAt.isoToMillis(),
+        updatedAt = updatedAt.isoToMillis(),
+        deletedAt = deletedAt?.isoToMillis(),
+        version = version,
+    )
+}
+
+fun NoteEntity.toDto() = NoteDto(
+    id = id,
+    familyId = familyId,
+    profileId = profileId,
+    title = title,
+    body = body,
     createdAt = createdAt.toIso(),
     updatedAt = updatedAt.toIso(),
     deletedAt = deletedAt?.toIso(),

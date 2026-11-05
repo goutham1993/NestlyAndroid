@@ -110,6 +110,22 @@ class DtoMappingTest {
     }
 
     @Test
+    fun noteRoundTripsThroughDto() {
+        val original = com.lifestyle.nestly.data.model.NoteEntity(
+            id = "11111111-1111-1111-1111-111111111111",
+            familyId = "33333333-3333-3333-3333-333333333333",
+            profileId = "44444444-4444-4444-4444-444444444444",
+            title = "Bedtime routine",
+            body = "1. Bath\n2. Feed\n☑ Lay out pajamas\n☐ Buy diapers\n• White noise on",
+            createdAt = 1_700_000_000_000L,
+            updatedAt = 1_700_000_100_000L,
+            deletedAt = 1_700_000_200_000L,
+            version = 4,
+        )
+        assertEquals(original, original.toDto().toEntity())
+    }
+
+    @Test
     fun isoConversionRoundTrips() {
         val millis = 1_700_000_123_000L
         assertEquals(millis, millis.toIso().isoToMillis())

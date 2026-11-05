@@ -36,6 +36,7 @@ class RealtimeManager(
             val tables = listOf(
                 RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
                 RefreshBus.REMINDER, RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
+                RefreshBus.NOTE,
             )
             // Register the change flows once per subscribe() call: client.channel
             // returns the same channel on retry, so re-registering would stack
@@ -109,7 +110,7 @@ class RealtimeManager(
         RefreshBus.invalidate(
             RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
             RefreshBus.FAMILY, RefreshBus.REMINDER,
-            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
+            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION, RefreshBus.NOTE,
         )
     }
 }

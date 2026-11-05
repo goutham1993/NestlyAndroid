@@ -5,7 +5,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,14 +20,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
@@ -41,18 +36,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -65,6 +55,7 @@ import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
+import com.lifestyle.nestly.ui.components.FormattedNotesEditor
 import com.lifestyle.nestly.ui.components.OptionPickerDialog
 import com.lifestyle.nestly.ui.components.RowDivider
 import com.lifestyle.nestly.ui.components.SectionHeading
@@ -75,8 +66,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /** Common visit reasons offered as one-tap title hints, ahead of the user's own past titles. */
 private val TITLE_HINTS = listOf(
@@ -333,7 +322,6 @@ private fun SuggestingTextField(
     RowDivider()
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AppointmentDetailScreen(appointmentId: String?, onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
@@ -365,11 +353,7 @@ fun AppointmentDetailScreen(appointmentId: String?, onBack: () -> Unit) {
     }
     var lead by remember { mutableStateOf(AppointmentReminderLead.ONE_DAY) }
     var notes by remember { mutableStateOf(TextFieldValue("")) }
-    var notesFocused by remember { mutableStateOf(false) }
-    val notesFocusRequester = remember { FocusRequester() }
-    val notesBringIntoViewRequester = BringIntoViewRequester()
     val detailScrollState = rememberScrollState()
-    val scope = rememberCoroutineScope()
     var initialized by remember { mutableStateOf(appointmentId == null) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -399,31 +383,6 @@ fun AppointmentDetailScreen(appointmentId: String?, onBack: () -> Unit) {
         val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
         if (!granted) permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-    }
-
-    fun applyFormat(format: NoteLineFormat) {
-        val result = AppointmentNotesFormat.formatCurrentLine(notes.text, notes.selection.start, format)
-        notes = TextFieldValue(result.text, TextRange(result.cursor))
-        // The toolbar buttons take focus on tap; hand it straight back so the
-        // keyboard stays up and the user can keep typing on the formatted line.
-        notesFocusRequester.requestFocus()
-    }
-
-    fun onNotesChange(newValue: TextFieldValue) {
-        // A lone inserted newline continues a bullet / numbered / checkbox
-        // line onto the new line; every other edit is accepted untouched.
-        val continued = AppointmentNotesFormat.continueListOnEnter(
-            oldText = notes.text,
-            oldSelectionStart = notes.selection.start,
-            oldSelectionEnd = notes.selection.end,
-            newText = newValue.text,
-            newCursor = newValue.selection.start,
-        )
-        notes = if (continued != null && newValue.selection.collapsed) {
-            TextFieldValue(continued.text, TextRange(continued.cursor))
-        } else {
-            newValue
-        }
     }
 
     fun save() {
@@ -500,106 +459,14 @@ fun AppointmentDetailScreen(appointmentId: String?, onBack: () -> Unit) {
             )
 
             SectionHeading("Notes & questions")
-            Text(
-                "Write freely — questions to ask, what the doctor said, follow-ups. " +
+            FormattedNotesEditor(
+                value = notes,
+                onValueChange = { notes = it },
+                hint = "Write freely — questions to ask, what the doctor said, follow-ups. " +
                     "Use the buttons below to start a bullet, numbered or checkbox line; " +
                     "pressing Enter continues it onto the next line.",
-                style = NestlyType.Small,
-                color = NestlyColors.TextSecondary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                placeholder = "☐ Ask about feeding\n• Bring vaccine record\n1. First question",
             )
-            Row(Modifier.padding(horizontal = 12.dp)) {
-                TextButton(onClick = { applyFormat(NoteLineFormat.BULLET) }) {
-                    Text("• Bullet", color = NestlyColors.AccentText, style = NestlyType.Button)
-                }
-                TextButton(onClick = { applyFormat(NoteLineFormat.NUMBERED) }) {
-                    Text("1. Numbered", color = NestlyColors.AccentText, style = NestlyType.Button)
-                }
-                TextButton(onClick = { applyFormat(NoteLineFormat.CHECKBOX) }) {
-                    Text("☐ Checkbox", color = NestlyColors.AccentText, style = NestlyType.Button)
-                }
-            }
-            Column(
-                Modifier
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
-                    .bringIntoViewRequester(notesBringIntoViewRequester),
-            ) {
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = ::onNotesChange,
-                    placeholder = {
-                        Text(
-                            "☐ Ask about feeding\n• Bring vaccine record\n1. First question",
-                            color = NestlyColors.TextMuted,
-                        )
-                    },
-                    // While typing the field grows and is scrolled fully above
-                    // the keyboard (see DetailScreen's imePadding), so the line
-                    // being written is never hidden behind it.
-                    minLines = if (notesFocused) 10 else 6,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NestlyColors.AccentText,
-                        unfocusedBorderColor = NestlyColors.Divider,
-                        cursorColor = NestlyColors.AccentText,
-                        focusedLabelColor = NestlyColors.AccentText,
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(notesFocusRequester)
-                        .onFocusChanged { state ->
-                            val wasFocused = notesFocused
-                            notesFocused = state.isFocused
-                            if (state.isFocused && !wasFocused) {
-                                scope.launch {
-                                    // Wait for the keyboard to start opening so the
-                                    // (now ime-shrunk) viewport is the one we scroll in.
-                                    delay(250)
-                                    notesBringIntoViewRequester.bringIntoView()
-                                }
-                            }
-                        },
-                )
-            }
-            val checkboxItems = AppointmentNotesFormat.checkboxItems(notes.text)
-            if (checkboxItems.isNotEmpty()) {
-                Text(
-                    "Tap to check off (${checkboxItems.count { it.checked }}/${checkboxItems.size} done)",
-                    style = NestlyType.Small,
-                    color = NestlyColors.TextSecondary,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                )
-                checkboxItems.forEach { item ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 56.dp)
-                            .padding(start = 8.dp, end = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(
-                            checked = item.checked,
-                            onCheckedChange = {
-                                notes = TextFieldValue(
-                                    AppointmentNotesFormat.toggleCheckbox(notes.text, item.lineIndex),
-                                    notes.selection,
-                                )
-                            },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = NestlyColors.Accent,
-                                uncheckedColor = NestlyColors.TextMuted,
-                                checkmarkColor = NestlyColors.Surface,
-                            ),
-                        )
-                        Text(
-                            item.text,
-                            style = NestlyType.Body,
-                            color = if (item.checked) NestlyColors.TextSecondary else NestlyColors.TextPrimary,
-                            textDecoration = if (item.checked) TextDecoration.LineThrough else null,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
             RowDivider()
 
             if (appointmentId != null) {

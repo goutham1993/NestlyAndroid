@@ -319,6 +319,7 @@ class FamilyRepository(
         client.from("reminder").delete { filter { eq("family_id", familyId) } }
         client.from("appointment_question").delete { filter { eq("family_id", familyId) } }
         client.from("appointment").delete { filter { eq("family_id", familyId) } }
+        client.from("note").delete { filter { eq("family_id", familyId) } }
         client.from("family_invite").delete { filter { eq("family_id", familyId) } }
         client.from("profile").delete { filter { eq("family_id", familyId) } }
         client.from("family").delete { filter { eq("id", familyId) } }
@@ -329,7 +330,7 @@ class FamilyRepository(
         RefreshBus.invalidate(
             RefreshBus.ACTIVITY, RefreshBus.PROFILE, RefreshBus.CAREGIVER,
             RefreshBus.FAMILY, RefreshBus.REMINDER,
-            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION,
+            RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION, RefreshBus.NOTE,
         )
     }
 

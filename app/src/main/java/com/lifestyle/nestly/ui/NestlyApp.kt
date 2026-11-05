@@ -59,6 +59,8 @@ import com.lifestyle.nestly.ui.importer.ImportViewModel
 import com.lifestyle.nestly.ui.appointments.AppointmentDetailScreen
 import com.lifestyle.nestly.ui.appointments.AppointmentsScreen
 import com.lifestyle.nestly.ui.milestones.MilestonesScreen
+import com.lifestyle.nestly.ui.notes.NoteDetailScreen
+import com.lifestyle.nestly.ui.notes.NotesScreen
 import com.lifestyle.nestly.ui.history.HistoryTab
 import com.lifestyle.nestly.ui.reminders.RemindersScreen
 import com.lifestyle.nestly.ui.trends.TrendDetailScreen
@@ -82,6 +84,10 @@ object Routes {
     const val APPOINTMENT_NEW = "appointments/new"
     const val APPOINTMENT_DETAIL = "appointments/{id}"
     fun appointmentDetail(id: String) = "appointments/$id"
+    const val NOTES = "notes"
+    const val NOTE_NEW = "notes/new"
+    const val NOTE_DETAIL = "notes/{id}"
+    fun noteDetail(id: String) = "notes/$id"
     const val FAMILY = "family"
     const val SETTINGS = "settings"
     const val UNITS = "units"
@@ -217,6 +223,17 @@ fun NestlyApp(
                         appointmentId = backStack.arguments?.getString("id"),
                         onBack = back,
                     )
+                }
+                composable(Routes.NOTES) {
+                    NotesScreen(
+                        onBack = back,
+                        onOpenNote = { nav.navigate(Routes.noteDetail(it)) },
+                        onAddNote = { nav.navigate(Routes.NOTE_NEW) },
+                    )
+                }
+                composable(Routes.NOTE_NEW) { NoteDetailScreen(noteId = null, onBack = back) }
+                composable(Routes.NOTE_DETAIL) { backStack ->
+                    NoteDetailScreen(noteId = backStack.arguments?.getString("id"), onBack = back)
                 }
                 composable(Routes.FAMILY) { FamilyScreen(appViewModel, onBack = back) }
                 composable(Routes.SETTINGS) { SettingsScreen(onBack = back, navigate = { nav.navigate(it) }) }

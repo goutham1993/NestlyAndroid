@@ -23,7 +23,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Assistant / App Actions / launcher shortcut: quick-log bottle like the widget. -->
+        <activity
+            android:name=".widget.QuickBottleLogActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.Nestly.Translucent" />
 
         <service
             android:name=".dream.NestlyDreamService"

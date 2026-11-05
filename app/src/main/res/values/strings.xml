@@ -4,4 +4,22 @@
     <string name="quick_log_widget_label">Nestly Quick Log</string>
     <string name="nightstand_dream_label">Nestly Nightstand</string>
     <string name="nightstand_dream_description">Shows the time and when the next feed is due while charging</string>
+    <string name="add_feed_shortcut_short_label">Add feed</string>
+    <string name="add_feed_shortcut_long_label">Add bottle feed now</string>
+
+    <!-- Portion after "open Nestly and …" / "ask Nestly to …" for App Actions. -->
+    <string-array name="add_feed_queries">
+        <item>add feed now</item>
+        <item>add a feed now</item>
+        <item>add feed</item>
+        <item>add a feed</item>
+        <item>log a bottle</item>
+        <item>log bottle</item>
+        <item>log bottle feed</item>
+        <item>log a bottle feed</item>
+        <item>add bottle feed</item>
+        <item>add a bottle feed</item>
+        <item>log feed</item>
+        <item>log a feed</item>
+    </string-array>
 </resources>

@@ -209,6 +209,24 @@ class QuickBottleLogWorker(
 }
 
 /**
+ * Enqueues [QuickBottleLogWorker] with the current time as the feed timestamp.
+ * Used by the widget Bottle button and by Google Assistant / App Actions
+ * ([QuickBottleLogActivity]) so both paths share the same save behavior.
+ *
+ * KEEP: a second request while a save is in flight is dropped, replacing the
+ * old in-process double-tap flag (which a cold start simply reset).
+ */
+suspend fun enqueueQuickBottleLog(context: Context, atMs: Long = System.currentTimeMillis()) {
+    val request = OneTimeWorkRequestBuilder<QuickBottleLogWorker>()
+        .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+        .setInputData(workDataOf(QuickBottleLogWorker.KEY_TAPPED_AT_MS to atMs))
+        .build()
+    WorkManager.getInstance(context.applicationContext)
+        .enqueueUniqueWork(QuickBottleLogWorker.UNIQUE_NAME, ExistingWorkPolicy.KEEP, request)
+    toast(context, "Saving bottle feed…")
+}
+
+/**
  * Glance callback for the widget's Bottle button. Only enqueues
  * [QuickBottleLogWorker] and confirms with a toast — it never starts
  * [com.lifestyle.nestly.MainActivity], and the save itself happens in the
@@ -221,14 +239,6 @@ class SaveBottleFeedCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters,
     ) {
-        val request = OneTimeWorkRequestBuilder<QuickBottleLogWorker>()
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-            .setInputData(workDataOf(QuickBottleLogWorker.KEY_TAPPED_AT_MS to System.currentTimeMillis()))
-            .build()
-        // KEEP: a second tap while a save is in flight is dropped here, replacing
-        // the old in-process double-tap flag (which a cold start simply reset).
-        WorkManager.getInstance(context.applicationContext)
-            .enqueueUniqueWork(QuickBottleLogWorker.UNIQUE_NAME, ExistingWorkPolicy.KEEP, request)
-        toast(context, "Saving bottle feed…")
+        enqueueQuickBottleLog(context)
     }
 }

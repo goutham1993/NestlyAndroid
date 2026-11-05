@@ -203,6 +203,12 @@ fun NightstandScreen(
         val supportSmallSize = (heroSize.value * 0.14f).coerceIn(14f, 24f).sp
         val logTextSize = (heroSize.value * 0.26f).coerceIn(22f, 42f).sp
         val closeTextSize = (heroSize.value * 0.22f).coerceIn(19f, 36f).sp
+        // Vitamin D status: larger than the hero labels so red/green reads from across the room.
+        // Scales with the window: by hero size, and capped by width so the longest line
+        // ("VITAMIN D GIVEN", ~17em with dot and tracking) never clips on a narrow phone.
+        val horizontalPadding = if (landscape) 64f else 48f
+        val vitaminDSize = minOf(heroSize.value * 0.26f, (maxWidth.value - horizontalPadding) / 17f)
+            .coerceAtLeast(16f).sp
         // Button height also grows with the tablet's height in landscape.
         val landscapeButtonHeight = (maxHeight.value * 0.115f).coerceIn(64f, 96f).dp
 
@@ -221,7 +227,7 @@ fun NightstandScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HeaderLine(state, now, headerSize)
-                VitaminDStatus(state, loggingVitaminD, labelSize, onLog = { logVitaminD() })
+                VitaminDStatus(state, loggingVitaminD, vitaminDSize, onLog = { logVitaminD() })
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -276,7 +282,7 @@ fun NightstandScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 HeaderLine(state, now, headerSize)
-                VitaminDStatus(state, loggingVitaminD, labelSize, onLog = { logVitaminD() })
+                VitaminDStatus(state, loggingVitaminD, vitaminDSize, onLog = { logVitaminD() })
                 Spacer(Modifier.height(4.dp))
                 HeroNumber(
                     label = "NOW",
@@ -347,21 +353,39 @@ private fun VitaminDStatus(
     if (state?.profileName == null) return
     val givenAt = state.vitaminDGivenAt
     val color = if (givenAt != null) NestlyColors.DoseGiven else NestlyColors.DoseMissing
-    val text = when {
-        givenAt != null -> "VITAMIN D GIVEN ${Format.time(givenAt)}"
-        logging -> "SAVING VITAMIN D…"
-        else -> "VITAMIN D — TAP WHEN GIVEN"
+    // Short headline at full size; the detail sits under it smaller so neither has to clip.
+    val headline = if (givenAt != null) "VITAMIN D GIVEN" else "VITAMIN D DUE"
+    val detail = when {
+        givenAt != null -> "at ${Format.time(givenAt)}"
+        logging -> "saving…"
+        else -> "tap when given"
     }
+    val hintSize = fontSize * 0.62f
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
             .then(if (givenAt == null && !logging) Modifier.clickable(onClick = onLog) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = (fontSize.value * 0.6f).dp, vertical = (fontSize.value * 0.25f).dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DoseStatusDot(given = givenAt != null, size = (fontSize.value * 0.8f).dp)
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = labelStyle(fontSize).copy(letterSpacing = 2.sp), color = color, maxLines = 1, softWrap = false)
+        DoseStatusDot(given = givenAt != null, size = (fontSize.value * 0.7f).dp)
+        Spacer(Modifier.width((fontSize.value * 0.3f).dp))
+        Column {
+            Text(
+                headline,
+                style = labelStyle(fontSize).copy(letterSpacing = fontSize * 0.08f),
+                color = color,
+                maxLines = 1,
+                softWrap = false,
+            )
+            Text(
+                detail,
+                style = TextStyle(fontSize = hintSize, lineHeight = hintSize * 1.2f),
+                color = if (givenAt != null) NightDim else color.copy(alpha = 0.85f),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
     }
 }
 

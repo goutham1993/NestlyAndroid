@@ -38,6 +38,7 @@ import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.prefs.CardKind
 import com.lifestyle.nestly.data.reminder.NextFeedState
 import com.lifestyle.nestly.ui.components.ActivityIcon
+import com.lifestyle.nestly.ui.components.DoseStatusDot
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.IconKind
 import com.lifestyle.nestly.ui.components.RowDivider
@@ -275,6 +276,32 @@ fun MetricRow(icon: IconKind, title: String, subtitle: String?, value: String?, 
             if (subtitle != null) Text(subtitle, style = NestlyType.Small, color = NestlyColors.TextSecondary)
         }
         if (value != null) Text(value, style = NestlyType.Body.copy(fontWeight = FontWeight.Medium))
+        Spacer(Modifier.width(6.dp))
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = NestlyColors.TextSecondary, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** "Vitamin D / Given today at 8:12am" with a red (pulsing) or green status dot. */
+@Composable
+fun VitaminDRow(givenAt: Long?, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ActivityIcon(IconKind.MEDICAL, size = 44.dp)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Vitamin D", style = NestlyType.CardLead.copy(fontSize = 19.sp))
+            Text(
+                if (givenAt != null) "Given today at ${Format.time(givenAt)}" else "Not given today",
+                style = NestlyType.Small,
+                color = if (givenAt != null) NestlyColors.TextSecondary else NestlyColors.DoseMissing,
+            )
+        }
+        DoseStatusDot(given = givenAt != null, size = 12.dp)
         Spacer(Modifier.width(6.dp))
         Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = NestlyColors.TextSecondary, modifier = Modifier.size(20.dp))
     }

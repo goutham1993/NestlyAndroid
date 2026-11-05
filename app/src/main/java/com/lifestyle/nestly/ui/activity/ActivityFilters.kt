@@ -30,6 +30,6 @@ val FilterOption.types: List<ActivityType>
         FilterOption.DIAPER -> listOf(ActivityType.DIAPER)
         FilterOption.SLEEP -> listOf(ActivityType.SLEEP)
         FilterOption.ROUTINE -> listOf(ActivityType.ROUTINE, ActivityType.BABY_FIRST)
-        FilterOption.HEALTH -> listOf(ActivityType.MEDICAL, ActivityType.VACCINE)
+        FilterOption.HEALTH -> listOf(ActivityType.MEDICAL, ActivityType.VACCINE, ActivityType.VITAMIN_D)
         FilterOption.NOTES, FilterOption.PHOTOS -> emptyList()
     }

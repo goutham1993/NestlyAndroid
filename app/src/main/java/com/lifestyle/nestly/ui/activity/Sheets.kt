@@ -49,7 +49,7 @@ import com.lifestyle.nestly.ui.theme.NestlyType
 import com.lifestyle.nestly.ui.theme.headerColor
 import com.lifestyle.nestly.ui.units.currentUnitPrefs
 
-/** Bottom sheet listing Breastfeed / Bottle Feed / Solids / Combo Feed with large icons. */
+/** Bottom sheet listing Breastfeed / Bottle Feed / Solids / Combo Feed / Vitamin D with large icons. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedTypePicker(options: List<EntryKind>, onDismiss: () -> Unit, onPick: (EntryKind) -> Unit) {

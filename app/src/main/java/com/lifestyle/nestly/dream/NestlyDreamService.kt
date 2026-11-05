@@ -46,6 +46,7 @@ class NestlyDreamService : DreamService() {
         val container = applicationContext.appContainer
         val viewModel = NightstandViewModel(container, scope)
         val quickLog = com.lifestyle.nestly.widget.QuickBottleLog(container)
+        val quickVitaminD = com.lifestyle.nestly.widget.QuickVitaminDLog(container)
 
         val lifecycleOwner = DreamLifecycleOwner().also { it.create() }
         owner = lifecycleOwner
@@ -57,6 +58,7 @@ class NestlyDreamService : DreamService() {
                     NightstandScreen(
                         viewModel = viewModel,
                         onLogFeed = { quickLog.save() },
+                        onLogVitaminD = { quickVitaminD.save() },
                         onExit = { finish() },
                     )
                 }

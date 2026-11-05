@@ -180,6 +180,7 @@ fun ActivityTab(
             if (layout.isEnabled(ActivityToggle.BOTTLE_FEEDING)) add(EntryKind.BOTTLE)
             if (layout.isEnabled(ActivityToggle.SOLID_FEEDING)) add(EntryKind.SOLIDS)
             if (layout.isEnabled(ActivityToggle.COMBO_FEEDING)) add(EntryKind.COMBO)
+            add(EntryKind.VITAMIN_D)
         }
         FeedTypePicker(options, onDismiss = { showFeedPicker = false }) { kind ->
             showFeedPicker = false

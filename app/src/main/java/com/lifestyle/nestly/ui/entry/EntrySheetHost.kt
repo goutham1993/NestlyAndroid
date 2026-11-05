@@ -109,6 +109,7 @@ fun EntrySheetHost(request: EntryRequest, onDismiss: () -> Unit) {
             EntryKind.MILESTONE -> MilestoneForm(form)
             EntryKind.MEDICAL -> MedicalForm(form)
             EntryKind.VACCINE -> VaccineForm(form)
+            EntryKind.VITAMIN_D -> VitaminDForm(form)
         }
         NotesAndPhoto(form)
     }

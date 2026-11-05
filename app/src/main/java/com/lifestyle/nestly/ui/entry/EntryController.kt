@@ -273,18 +273,31 @@ class EntryController(
         if (kind == EntryKind.BREASTFEED || kind == EntryKind.COMBO) {
             lastSide = container.activities.getLatest(profile.familyId, profile.id, ActivityType.BREASTFEED)?.breastfeed?.endSide
         }
+        if (editId == null && kind == EntryKind.VITAMIN_D) {
+            val last = runCatching {
+                container.activities.getLatest(profile.familyId, profile.id, ActivityType.VITAMIN_D)?.medical
+            }.getOrNull()
+            val untouched = draft.dose == EntryBuilder.VITAMIN_D_DEFAULT_DOSE &&
+                draft.doseUnit == EntryBuilder.VITAMIN_D_DEFAULT_UNIT
+            if (last?.dose != null && untouched) {
+                draft = draft.copy(dose = last.dose, doseUnit = last.doseUnit ?: draft.doseUnit)
+            }
+        }
     }
 
     private fun initialDraft(request: EntryRequest): EntryDraft {
         val now = System.currentTimeMillis()
         if (request !is EntryRequest.New) return EntryDraft(startTime = now)
         val timed = request.kind in setOf(EntryKind.BREASTFEED, EntryKind.COMBO, EntryKind.PUMP, EntryKind.SLEEP)
+        val vitaminD = request.kind == EntryKind.VITAMIN_D
         return EntryDraft(
             startTime = now,
             startTimeSet = !timed,
             milestoneKey = request.milestone?.key,
             milestoneTitle = request.milestone?.title.orEmpty(),
             vaccines = request.vaccines,
+            dose = if (vitaminD) EntryBuilder.VITAMIN_D_DEFAULT_DOSE else null,
+            doseUnit = if (vitaminD) EntryBuilder.VITAMIN_D_DEFAULT_UNIT else null,
         )
     }
 }

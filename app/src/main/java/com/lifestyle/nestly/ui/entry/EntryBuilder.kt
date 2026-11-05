@@ -45,6 +45,7 @@ object EntryBuilder {
         EntryKind.MILESTONE -> d.milestoneTitle.isNotBlank()
         EntryKind.MEDICAL -> d.temperatureF != null || !d.medicationName.isNullOrBlank()
         EntryKind.VACCINE -> d.vaccines.isNotEmpty()
+        EntryKind.VITAMIN_D -> true
     }
 
     /**
@@ -136,6 +137,13 @@ object EntryBuilder {
                 ),
             )
             EntryKind.VACCINE -> common.copy(vaccine = VaccineDetails(d.vaccines))
+            EntryKind.VITAMIN_D -> common.copy(
+                medical = MedicalDetails(
+                    medicationName = VITAMIN_D_NAME,
+                    dose = d.dose,
+                    doseUnit = d.doseUnit.takeIf { d.dose != null },
+                ),
+            )
             EntryKind.COMBO -> error("handled above")
         }
         return listOf(row)
@@ -195,7 +203,12 @@ object EntryBuilder {
         EntryKind.MILESTONE -> ActivityType.MILESTONE
         EntryKind.MEDICAL -> ActivityType.MEDICAL
         EntryKind.VACCINE -> ActivityType.VACCINE
+        EntryKind.VITAMIN_D -> ActivityType.VITAMIN_D
     }
+
+    const val VITAMIN_D_NAME = "Vitamin D"
+    const val VITAMIN_D_DEFAULT_DOSE = 400.0
+    const val VITAMIN_D_DEFAULT_UNIT = "IU"
 
     private fun defaultSide(d: EntryDraft): BreastSide? = when {
         d.leftSec > 0 && d.rightSec == 0L -> BreastSide.LEFT

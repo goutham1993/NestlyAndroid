@@ -43,6 +43,33 @@ class EntryBuilderTest {
     }
 
     @Test
+    fun vitaminDRoundTripsThroughDraft() {
+        val draft = EntryDraft(startTime = 500_000, dose = 400.0, doseUnit = "IU", note = "with feed")
+        assertTrue(EntryBuilder.canSave(EntryKind.VITAMIN_D, draft))
+        val row = EntryBuilder.build(EntryKind.VITAMIN_D, draft, ctx).single()
+        assertEquals(ActivityType.VITAMIN_D, row.type)
+        assertEquals("p", row.profileId)
+        assertEquals(EntryBuilder.VITAMIN_D_NAME, row.medical!!.medicationName)
+        assertEquals(400.0, row.medical!!.dose!!, 0.0)
+        assertEquals("IU", row.medical!!.doseUnit)
+        assertEquals(EntryKind.VITAMIN_D, EntryKind.of(row.type))
+
+        val back = EntryBuilder.draftOf(row)
+        assertEquals(400.0, back.dose!!, 0.0)
+        assertEquals("IU", back.doseUnit)
+        assertEquals("with feed", back.note)
+    }
+
+    @Test
+    fun vitaminDWithoutDoseDropsUnit() {
+        val draft = EntryDraft(startTime = 500_000, dose = null, doseUnit = "IU")
+        assertTrue(EntryBuilder.canSave(EntryKind.VITAMIN_D, draft))
+        val row = EntryBuilder.build(EntryKind.VITAMIN_D, draft, ctx).single()
+        assertNull(row.medical!!.dose)
+        assertNull(row.medical!!.doseUnit)
+    }
+
+    @Test
     fun comboWithOnlyBottleProducesOneUnlinkedRow() {
         val draft = EntryDraft(startTime = 500_000, milkType = MilkType.FORMULA, bottleMl = 90.0)
         val rows = EntryBuilder.build(EntryKind.COMBO, draft, ctx)

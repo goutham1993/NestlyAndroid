@@ -36,6 +36,10 @@ object NestlyColors {
     val BabyFirstsBlob = Color(0xFF7FC4CC)
     val GrowthBlob = Color(0xFF8CC46F)
     val HealthBlob = Color(0xFFA5A8E0)
+
+    /** Daily-dose status dot: must read as red / green from across a dark room. */
+    val DoseMissing = Color(0xFFFF5147)
+    val DoseGiven = Color(0xFF4CD964)
 }
 
 val CardKind.headerColor: Color

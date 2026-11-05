@@ -312,6 +312,39 @@ fun MedicalForm(form: FormScope) {
     }
 }
 
+private val VITAMIN_D_UNITS = listOf("IU", "drops", "mL")
+
+@Composable
+fun VitaminDForm(form: FormScope) {
+    val d = form.draft
+    var editingDose by remember { mutableStateOf(false) }
+    val unit = d.doseUnit ?: EntryBuilder.VITAMIN_D_DEFAULT_UNIT
+    TimeRow(form, "Time")
+    FormRow(
+        "Dose",
+        value = d.dose?.let { "${Format.number(it)} $unit" },
+        action = if (d.dose == null) "Add" else null,
+        onClick = { editingDose = true },
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        VITAMIN_D_UNITS.forEach { option ->
+            Chip(option, selected = unit == option, onClick = { form.update { it.copy(doseUnit = option) } })
+        }
+    }
+    RowDivider()
+    if (editingDose) {
+        NumberInputDialog("Dose", unit, d.dose, onDismiss = { editingDose = false }) { v ->
+            editingDose = false
+            form.update { it.copy(dose = v, doseUnit = unit) }
+        }
+    }
+}
+
 @Composable
 private fun MedicationDialog(
     name: String,

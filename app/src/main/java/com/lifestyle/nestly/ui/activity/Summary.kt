@@ -62,6 +62,7 @@ object Summary {
         ActivityType.MILESTONE,
         ActivityType.MEDICAL,
         ActivityType.VACCINE,
+        ActivityType.VITAMIN_D,
     )
 }
 
@@ -79,4 +80,5 @@ val ActivityType.displayName: String
         ActivityType.BABY_FIRST -> "Baby First"
         ActivityType.MEDICAL -> "Medical"
         ActivityType.VACCINE -> "Vaccine"
+        ActivityType.VITAMIN_D -> "Vitamin D"
     }

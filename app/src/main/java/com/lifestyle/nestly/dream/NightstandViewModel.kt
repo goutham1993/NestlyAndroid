@@ -4,6 +4,7 @@ import com.lifestyle.nestly.AppContainer
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.ReminderKind
+import com.lifestyle.nestly.data.reminder.DailyDose
 import com.lifestyle.nestly.data.reminder.NextFeedState
 import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.units.UnitPrefs
@@ -34,6 +35,8 @@ data class NightstandState(
     /** Total bottle volume today in ml; breastfeed/solids contribute no volume. */
     val todayBottleMl: Double = 0.0,
     val units: UnitPrefs = UnitPrefs.DEFAULT,
+    /** When today's Vitamin D was given; null until it is (resets at local midnight). */
+    val vitaminDGivenAt: Long? = null,
     val now: Long = System.currentTimeMillis(),
 )
 
@@ -144,6 +147,7 @@ class NightstandViewModel(
                 todayFeedCount = todayFeeds.size,
                 todayBottleMl = todayFeeds.sumOf { it.bottle?.totalMl ?: 0.0 },
                 units = raw.units,
+                vitaminDGivenAt = DailyDose.givenAt(raw.recent, startOfToday, startOfNextDay(nowMs)),
                 now = nowMs,
             )
         }
@@ -151,6 +155,9 @@ class NightstandViewModel(
 
     private fun startOfDay(epochMs: Long): Long =
         Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+
+    private fun startOfNextDay(epochMs: Long): Long =
+        Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
 
     private data class RawFeeds(
         val lastFeed: ActivityEntity?,

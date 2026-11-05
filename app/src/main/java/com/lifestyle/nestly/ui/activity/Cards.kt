@@ -16,6 +16,7 @@ import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.prefs.ActivityLayout
 import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.data.prefs.CardKind
+import com.lifestyle.nestly.data.reminder.DailyDose
 import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.timer.TimerKey
 import com.lifestyle.nestly.data.timer.TimerState
@@ -270,8 +271,13 @@ private fun HealthCard(ctx: CardContext) {
     val units = currentUnitPrefs()
     val medical = ctx.data.latestMedical
     val vaccine = ctx.data.latestVaccine
+    val vitaminDAt = DailyDose.givenAt(ctx.data.recent, ctx.startOfToday, startOfNextDay(ctx.startOfToday))
+    val vitaminD = vitaminDAt?.let { at -> ctx.data.recent.firstOrNull { it.type == ActivityType.VITAMIN_D && it.startTime == at } }
     DashboardCard(CardKind.HEALTH, onAdd = null) {
         Spacer(Modifier.height(8.dp))
+        VitaminDRow(vitaminDAt) {
+            if (vitaminD != null) ctx.edit(vitaminD) else ctx.new(EntryKind.VITAMIN_D)
+        }
         MetricRow(
             IconKind.MEDICAL,
             "Medical",
@@ -287,3 +293,6 @@ private fun HealthCard(ctx: CardContext) {
         ) { ctx.onVaccinations() }
     }
 }
+
+private fun startOfNextDay(startOfDay: Long, zone: ZoneId = ZoneId.systemDefault()): Long =
+    Instant.ofEpochMilli(startOfDay).atZone(zone).toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()

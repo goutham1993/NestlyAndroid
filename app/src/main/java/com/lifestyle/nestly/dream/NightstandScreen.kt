@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -46,7 +48,9 @@ import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
 import com.lifestyle.nestly.ui.theme.SerifDisplay
+import com.lifestyle.nestly.ui.components.DoseStatusDot
 import com.lifestyle.nestly.widget.QuickBottleResult
+import com.lifestyle.nestly.widget.QuickVitaminDResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -77,12 +81,14 @@ private fun labelStyle(size: TextUnit) = TextStyle(
 fun NightstandScreen(
     viewModel: NightstandViewModel,
     onLogFeed: suspend () -> QuickBottleResult,
+    onLogVitaminD: suspend () -> QuickVitaminDResult,
     onExit: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var logging by remember { mutableStateOf(false) }
+    var loggingVitaminD by remember { mutableStateOf(false) }
 
     fun toast(message: String) {
         Toast.makeText(context.applicationContext, message, Toast.LENGTH_LONG).show()
@@ -114,6 +120,30 @@ fun NightstandScreen(
                 toast("Couldn't add feed. Check your connection and try again.")
             } finally {
                 logging = false
+            }
+        }
+    }
+    fun logVitaminD() {
+        if (loggingVitaminD) return
+        loggingVitaminD = true
+        scope.launch {
+            try {
+                val message = when (val result = onLogVitaminD()) {
+                    is QuickVitaminDResult.Saved -> "Vitamin D added at ${Format.time(result.atMs)}"
+                    is QuickVitaminDResult.AlreadyGiven -> "Vitamin D was already given today at ${Format.time(result.atMs)}"
+                    QuickVitaminDResult.NotSignedIn -> "Couldn't add Vitamin D. Open Nestly and sign in first."
+                    QuickVitaminDResult.SessionNotReady ->
+                        "Couldn't add Vitamin D yet — sign-in is still loading. Check your connection and tap again."
+                    QuickVitaminDResult.NoChild -> "Couldn't add Vitamin D. Open Nestly and select a child first."
+                    QuickVitaminDResult.Failed -> "Couldn't add Vitamin D. Check your connection and try again."
+                }
+                toast(message)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                toast("Couldn't add Vitamin D. Check your connection and try again.")
+            } finally {
+                loggingVitaminD = false
             }
         }
     }
@@ -191,6 +221,7 @@ fun NightstandScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 HeaderLine(state, now, headerSize)
+                VitaminDStatus(state, loggingVitaminD, labelSize, onLog = { logVitaminD() })
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -245,7 +276,8 @@ fun NightstandScreen(
                 verticalArrangement = Arrangement.Center,
             ) {
                 HeaderLine(state, now, headerSize)
-                Spacer(Modifier.height(10.dp))
+                VitaminDStatus(state, loggingVitaminD, labelSize, onLog = { logVitaminD() })
+                Spacer(Modifier.height(4.dp))
                 HeroNumber(
                     label = "NOW",
                     value = Format.time(now),
@@ -298,6 +330,38 @@ private fun HeaderLine(state: NightstandState?, now: Long, fontSize: TextUnit = 
             maxLines = 1,
             softWrap = false,
         )
+    }
+}
+
+/**
+ * Daily Vitamin D: pulsing red "tap when given" until today's dose is logged, then a
+ * solid green "given" line. Tapping is only possible while it's still missing.
+ */
+@Composable
+private fun VitaminDStatus(
+    state: NightstandState?,
+    logging: Boolean,
+    fontSize: TextUnit,
+    onLog: () -> Unit,
+) {
+    if (state?.profileName == null) return
+    val givenAt = state.vitaminDGivenAt
+    val color = if (givenAt != null) NestlyColors.DoseGiven else NestlyColors.DoseMissing
+    val text = when {
+        givenAt != null -> "VITAMIN D GIVEN ${Format.time(givenAt)}"
+        logging -> "SAVING VITAMIN D…"
+        else -> "VITAMIN D — TAP WHEN GIVEN"
+    }
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .then(if (givenAt == null && !logging) Modifier.clickable(onClick = onLog) else Modifier)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DoseStatusDot(given = givenAt != null, size = (fontSize.value * 0.8f).dp)
+        Spacer(Modifier.width(8.dp))
+        Text(text, style = labelStyle(fontSize).copy(letterSpacing = 2.sp), color = color, maxLines = 1, softWrap = false)
     }
 }
 

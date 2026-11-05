@@ -18,7 +18,7 @@ val ActivityType.card: CardKind
         ActivityType.ROUTINE -> CardKind.ROUTINE
         ActivityType.BABY_FIRST -> CardKind.BABY_FIRSTS
         ActivityType.GROWTH, ActivityType.MILESTONE -> CardKind.GROWTH
-        ActivityType.MEDICAL, ActivityType.VACCINE -> CardKind.HEALTH
+        ActivityType.MEDICAL, ActivityType.VACCINE, ActivityType.VITAMIN_D -> CardKind.HEALTH
     }
 
 val CardKind.types: List<ActivityType>
@@ -50,6 +50,7 @@ val ActivityEntity.iconKind: IconKind
         ActivityType.MILESTONE -> IconKind.MILESTONE
         ActivityType.MEDICAL -> IconKind.MEDICAL
         ActivityType.VACCINE -> IconKind.VACCINE
+        ActivityType.VITAMIN_D -> IconKind.MEDICAL
     }
 
 /** Short label shown after the time in list rows, e.g. "Breast Milk". */
@@ -72,6 +73,7 @@ val ActivityEntity.label: String
         ActivityType.MILESTONE -> milestone?.title ?: "Milestone"
         ActivityType.MEDICAL -> medical?.medicationName ?: "Medical"
         ActivityType.VACCINE -> vaccine?.vaccines?.joinToString() ?: "Vaccine"
+        ActivityType.VITAMIN_D -> "Vitamin D"
     }
 
 fun diaperLabel(type: DiaperType): String = when (type) {
@@ -94,6 +96,9 @@ fun ActivityEntity.detailText(prefs: UnitPrefs = UnitPrefs.DEFAULT): String? = w
     ActivityType.SLEEP -> durationSec?.let(Format::duration)
     ActivityType.SOLIDS -> solids?.foods?.joinToString()?.ifEmpty { null }
     ActivityType.MEDICAL -> medical?.temperatureC?.let { Format.temp(it, prefs) }
+    ActivityType.VITAMIN_D -> medical?.dose?.let { dose ->
+        listOfNotNull(Format.number(dose), medical.doseUnit).joinToString(" ")
+    }
     else -> null
 }
 

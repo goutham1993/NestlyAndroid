@@ -13,6 +13,7 @@ enum class ActivityType {
     BABY_FIRST,
     MEDICAL,
     VACCINE,
+    VITAMIN_D,
 }
 
 enum class MealType { BREAKFAST, LUNCH, DINNER, SNACK }

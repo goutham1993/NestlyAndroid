@@ -24,6 +24,7 @@ enum class EntryKind(val title: String, val card: CardKind, val icon: IconKind) 
     MILESTONE("Milestone", CardKind.GROWTH, IconKind.MILESTONE),
     MEDICAL("Medical", CardKind.HEALTH, IconKind.MEDICAL),
     VACCINE("Vaccine", CardKind.HEALTH, IconKind.VACCINE),
+    VITAMIN_D("Vitamin D", CardKind.HEALTH, IconKind.MEDICAL),
     ;
 
     companion object {
@@ -40,6 +41,7 @@ enum class EntryKind(val title: String, val card: CardKind, val icon: IconKind) 
             ActivityType.BABY_FIRST -> BABY_FIRST
             ActivityType.MEDICAL -> MEDICAL
             ActivityType.VACCINE -> VACCINE
+            ActivityType.VITAMIN_D -> VITAMIN_D
         }
     }
 }

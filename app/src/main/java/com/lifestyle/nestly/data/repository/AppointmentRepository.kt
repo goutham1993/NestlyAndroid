@@ -8,7 +8,7 @@ import com.lifestyle.nestly.data.supabase.AppointmentDto
 import com.lifestyle.nestly.data.supabase.AppointmentQuestionDto
 import com.lifestyle.nestly.data.supabase.ConflictException
 import com.lifestyle.nestly.data.supabase.RefreshBus
-import com.lifestyle.nestly.data.supabase.refetchFlow
+import com.lifestyle.nestly.data.supabase.refetchWhenAuthenticated
 import com.lifestyle.nestly.data.supabase.toDto
 import com.lifestyle.nestly.data.supabase.toIso
 import io.github.jan.supabase.SupabaseClient
@@ -26,8 +26,8 @@ class AppointmentRepository(
     /** Appointments for one child with their questions, soonest first. */
     fun observeForProfile(familyId: String, profileId: String): Flow<List<AppointmentWithQuestions>> =
         combine(
-            refetchFlow(RefreshBus.APPOINTMENT) { fetchForProfile(familyId, profileId) },
-            refetchFlow(RefreshBus.APPOINTMENT_QUESTION) { fetchQuestions(familyId) },
+            client.refetchWhenAuthenticated(RefreshBus.APPOINTMENT) { fetchForProfile(familyId, profileId) },
+            client.refetchWhenAuthenticated(RefreshBus.APPOINTMENT_QUESTION) { fetchQuestions(familyId) },
         ) { appointments, questions ->
             val byAppointment = questions.groupBy { it.appointmentId }
             appointments.map { AppointmentWithQuestions(it, byAppointment[it.id].orEmpty()) }
@@ -35,8 +35,8 @@ class AppointmentRepository(
 
     fun observeById(id: String): Flow<AppointmentWithQuestions?> =
         combine(
-            refetchFlow(RefreshBus.APPOINTMENT) { getById(id) },
-            refetchFlow(RefreshBus.APPOINTMENT_QUESTION) { fetchQuestionsForAppointment(id) },
+            client.refetchWhenAuthenticated(RefreshBus.APPOINTMENT) { getById(id) },
+            client.refetchWhenAuthenticated(RefreshBus.APPOINTMENT_QUESTION) { fetchQuestionsForAppointment(id) },
         ) { appointment, questions ->
             appointment?.let { AppointmentWithQuestions(it, questions) }
         }

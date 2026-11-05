@@ -61,4 +61,24 @@ class RefetchFlowTest {
         assertEquals(listOf(listOf("child-2")), values.await())
         DataErrors.clear()
     }
+
+    @Test
+    fun tickDuringFetchDoesNotCancelTheRequest() = runTest {
+        val table = "activity_test_no_cancel"
+        var calls = 0
+        val values = async {
+            refetchFlow(table) {
+                calls++
+                // Same thing MainActivity.onStart and the network callback do
+                // while the first read is still on the wire.
+                if (calls == 1) RefreshBus.invalidate(table)
+                "v$calls"
+            }.take(2).toList()
+        }
+        runCurrent()
+
+        assertEquals(listOf("v1", "v2"), values.await())
+        assertEquals(2, calls)
+        DataErrors.clear()
+    }
 }

@@ -14,6 +14,7 @@ import com.lifestyle.nestly.data.supabase.InviteDto
 import com.lifestyle.nestly.data.supabase.ProfileDto
 import com.lifestyle.nestly.data.supabase.RefreshBus
 import com.lifestyle.nestly.data.supabase.refetchFlow
+import com.lifestyle.nestly.data.supabase.refetchWhenAuthenticated
 import com.lifestyle.nestly.data.supabase.toDto
 import com.lifestyle.nestly.data.supabase.toIso
 import io.github.jan.supabase.SupabaseClient
@@ -27,6 +28,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -55,9 +57,12 @@ class FamilyRepository(
      * loading state instead of flashing onboarding on cold start.
      */
     private fun <T> authenticatedOnly(flow: () -> Flow<T>): Flow<T> =
-        client.auth.sessionStatus.flatMapLatest { status ->
-            if (status is SessionStatus.Authenticated) flow() else emptyFlow()
-        }
+        client.auth.sessionStatus
+            .map { it is SessionStatus.Authenticated }
+            .distinctUntilChanged()
+            .flatMapLatest { authenticated ->
+                if (authenticated) flow() else emptyFlow()
+            }
 
     val families: Flow<List<FamilyEntity>> = authenticatedOnly {
         refetchFlow(RefreshBus.FAMILY) {
@@ -92,7 +97,7 @@ class FamilyRepository(
 
     val caregivers: Flow<List<CaregiverEntity>> = selectedProfile.flatMapLatest { profile ->
         if (profile == null) flowOf(emptyList())
-        else refetchFlow(RefreshBus.CAREGIVER) {
+        else client.refetchWhenAuthenticated(RefreshBus.CAREGIVER) {
             client.from("caregiver").select {
                 filter {
                     eq("family_id", profile.familyId)

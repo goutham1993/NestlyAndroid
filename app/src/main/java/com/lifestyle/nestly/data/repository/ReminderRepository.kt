@@ -5,7 +5,7 @@ import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.supabase.RefreshBus
 import com.lifestyle.nestly.data.supabase.ReminderDto
-import com.lifestyle.nestly.data.supabase.refetchFlow
+import com.lifestyle.nestly.data.supabase.refetchWhenAuthenticated
 import com.lifestyle.nestly.data.supabase.toDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -21,7 +21,7 @@ class ReminderRepository(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun observeForProfile(familyId: String, profileId: String): Flow<List<ReminderEntity>> =
-        refetchFlow(RefreshBus.REMINDER) { fetchForProfile(familyId, profileId) }
+        client.refetchWhenAuthenticated(RefreshBus.REMINDER) { fetchForProfile(familyId, profileId) }
 
     suspend fun fetchForProfile(familyId: String, profileId: String): List<ReminderEntity> =
         fetchAll().filter { reminder ->

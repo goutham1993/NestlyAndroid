@@ -9,14 +9,25 @@ import com.lifestyle.nestly.AppContainer
 import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.model.AppointmentEntity
 import com.lifestyle.nestly.data.model.ReminderEntity
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class ReminderScheduler(private val context: Context) {
     private val alarms = context.getSystemService(AlarmManager::class.java)
 
     suspend fun rescheduleAll(container: AppContainer = context.appContainer) = withContext(Dispatchers.IO) {
-        // Signed-out or offline at boot: keep any already-scheduled alarms as-is.
+        // App start runs this before the stored session is restored. Querying
+        // then goes out as anon and Postgres rejects it. Wait until sign-in is
+        // settled; if it never arrives, leave the alarms already scheduled.
+        val status = withTimeoutOrNull(SESSION_WAIT_MS) {
+            container.auth.sessionStatus.first {
+                it is SessionStatus.Authenticated || it is SessionStatus.NotAuthenticated
+            }
+        }
+        if (status !is SessionStatus.Authenticated) return@withContext
         val enabled = runCatching { container.reminders.getEnabled() }.getOrDefault(emptyList())
         enabled.forEach { runCatching { schedule(it, container) } }
         val appointments = runCatching { container.appointments.fetchUpcomingWithReminders() }
@@ -106,6 +117,7 @@ class ReminderScheduler(private val context: Context) {
     }
 
     companion object {
+        private const val SESSION_WAIT_MS = 30_000L
         const val ACTION_FIRE = "com.lifestyle.nestly.REMINDER_FIRE"
         const val ACTION_APPOINTMENT_FIRE = "com.lifestyle.nestly.APPOINTMENT_FIRE"
         const val EXTRA_APPOINTMENT_ID = "appointment_id"

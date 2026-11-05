@@ -4,7 +4,7 @@ import com.lifestyle.nestly.data.model.NoteEntity
 import com.lifestyle.nestly.data.supabase.ConflictException
 import com.lifestyle.nestly.data.supabase.NoteDto
 import com.lifestyle.nestly.data.supabase.RefreshBus
-import com.lifestyle.nestly.data.supabase.refetchFlow
+import com.lifestyle.nestly.data.supabase.refetchWhenAuthenticated
 import com.lifestyle.nestly.data.supabase.toDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
@@ -18,10 +18,10 @@ class NoteRepository(
 ) {
     /** Notes for one child, most recently edited first. */
     fun observeForProfile(familyId: String, profileId: String): Flow<List<NoteEntity>> =
-        refetchFlow(RefreshBus.NOTE) { fetchForProfile(familyId, profileId) }
+        client.refetchWhenAuthenticated(RefreshBus.NOTE) { fetchForProfile(familyId, profileId) }
 
     fun observeById(id: String): Flow<NoteEntity?> =
-        refetchFlow(RefreshBus.NOTE) { getById(id) }
+        client.refetchWhenAuthenticated(RefreshBus.NOTE) { getById(id) }
 
     suspend fun fetchForProfile(familyId: String, profileId: String): List<NoteEntity> =
         client.from("note").select {

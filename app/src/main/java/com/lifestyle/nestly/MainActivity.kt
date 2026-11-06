@@ -11,10 +11,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lifestyle.nestly.data.reminder.ReminderNotifications
+import com.lifestyle.nestly.data.supabase.refreshSessionIfExpiring
 import com.lifestyle.nestly.ui.NestlyApp
 import com.lifestyle.nestly.ui.entry.EntryKind
 import com.lifestyle.nestly.ui.theme.NestlyTheme
 import com.lifestyle.nestly.widget.WidgetActions
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private var pendingEntryKind by mutableStateOf<EntryKind?>(null)
@@ -44,8 +46,13 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // Strict online-only: always refetch fresh state when the app returns
         // to the foreground; Realtime events missed while backgrounded are
-        // not replayed.
-        appContainer.realtime.refreshAll()
+        // not replayed. The token may have expired while the process slept,
+        // so renew it before the refetch goes out.
+        val container = appContainer
+        container.applicationScope.launch {
+            container.supabase.refreshSessionIfExpiring()
+            container.realtime.refreshAll()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

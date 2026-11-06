@@ -185,6 +185,6 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         e.message?.contains("Invalid login", ignoreCase = true) == true -> "Wrong email or password."
         e.message?.contains("already registered", ignoreCase = true) == true -> "That email already has an account. Sign in instead."
         e.message?.contains("invite", ignoreCase = true) == true -> "That invite code is invalid or expired."
-        else -> e.message?.takeIf { it.isNotBlank() } ?: "Something went wrong. Check your connection and try again."
+        else -> com.lifestyle.nestly.data.supabase.userFacingMessage(e)
     }
 }

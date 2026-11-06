@@ -63,7 +63,12 @@ fun ErrorScreen(message: String, onRetry: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Couldn't reach Nestly", style = NestlyType.RowLabel)
-            Text(message, style = NestlyType.Small, color = NestlyColors.TextSecondary)
+            Text(
+                message,
+                style = NestlyType.Small,
+                color = NestlyColors.TextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(containerColor = NestlyColors.AccentText),

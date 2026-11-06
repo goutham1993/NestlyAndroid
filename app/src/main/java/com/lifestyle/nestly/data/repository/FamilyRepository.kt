@@ -14,6 +14,7 @@ import com.lifestyle.nestly.data.supabase.InviteDto
 import com.lifestyle.nestly.data.supabase.ProfileDto
 import com.lifestyle.nestly.data.supabase.RefreshBus
 import com.lifestyle.nestly.data.supabase.refetchFlow
+import com.lifestyle.nestly.data.supabase.withFreshSession
 import com.lifestyle.nestly.data.supabase.refetchWhenAuthenticated
 import com.lifestyle.nestly.data.supabase.toDto
 import com.lifestyle.nestly.data.supabase.toIso
@@ -66,18 +67,22 @@ class FamilyRepository(
 
     val families: Flow<List<FamilyEntity>> = authenticatedOnly {
         refetchFlow(RefreshBus.FAMILY) {
-            client.from("family").select {
-                filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
-            }.decodeList<FamilyDto>().map { it.toEntity() }
+            client.withFreshSession {
+                client.from("family").select {
+                    filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
+                }.decodeList<FamilyDto>().map { it.toEntity() }
+            }
         }
     }
 
     val profiles: Flow<List<ProfileEntity>> = authenticatedOnly {
         refetchFlow(RefreshBus.PROFILE) {
-            client.from("profile").select {
-                filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
-                order("created_at", Order.ASCENDING)
-            }.decodeList<ProfileDto>().map { it.toEntity() }
+            client.withFreshSession {
+                client.from("profile").select {
+                    filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }
+                    order("created_at", Order.ASCENDING)
+                }.decodeList<ProfileDto>().map { it.toEntity() }
+            }
         }
     }
 

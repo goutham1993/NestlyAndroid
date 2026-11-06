@@ -1,22 +1,28 @@
 package com.lifestyle.nestly.data.supabase
 
+import android.util.Log
 import com.lifestyle.nestly.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.serializer.KotlinXSerializer
 import io.github.jan.supabase.storage.Storage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
+import java.io.IOException
 
 /** Last data-layer error, shown as a banner with Retry in strict online-only mode. */
 object DataErrors {
     val message = MutableStateFlow<String?>(null)
 
     fun report(e: Throwable) {
-        message.value = e.message?.takeIf { it.isNotBlank() } ?: "Couldn't reach the server. Check your connection."
+        // android.util.Log throws in plain JVM unit tests.
+        runCatching { Log.w("Nestly", "Data fetch failed: ${e.logSummary()}") }
+        message.value = userFacingMessage(e)
     }
 
     fun clear() {
@@ -31,6 +37,25 @@ object DataErrors {
             RefreshBus.APPOINTMENT, RefreshBus.APPOINTMENT_QUESTION, RefreshBus.NOTE,
         )
     }
+}
+
+/**
+ * Short, human copy for an error. Never show [RestException.message]: it
+ * embeds the request URL and headers, including the user's bearer token.
+ */
+fun userFacingMessage(e: Throwable): String = when {
+    e.isExpiredJwt() || (e is RestException && e.statusCode == 401) ->
+        "Your sign-in needed a refresh. Tap Retry to reconnect."
+    e is IOException -> "You seem to be offline. Check your connection and tap Retry."
+    e is RestException && e.statusCode >= 500 -> "Nestly's server is having a moment. Try again shortly."
+    e is RestException -> "Something went wrong loading your data. Tap Retry."
+    else -> "Something went wrong. Check your connection and tap Retry."
+}
+
+private fun Throwable.logSummary(): String = when (this) {
+    is PostgrestRestException -> "${javaClass.simpleName} $statusCode $code: $error"
+    is RestException -> "${javaClass.simpleName} $statusCode: $error"
+    else -> "${javaClass.simpleName}: $message"
 }
 
 /** Thrown when a version-checked update matched zero rows: someone else edited first. */

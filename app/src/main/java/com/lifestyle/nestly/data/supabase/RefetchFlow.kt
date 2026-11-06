@@ -84,5 +84,5 @@ fun <T> SupabaseClient.refetchWhenAuthenticated(table: String, fetch: suspend ()
         .map { it is SessionStatus.Authenticated }
         .distinctUntilChanged()
         .flatMapLatest { authenticated ->
-            if (authenticated) refetchFlow(table, fetch) else emptyFlow()
+            if (authenticated) refetchFlow(table) { withFreshSession(fetch) } else emptyFlow()
         }

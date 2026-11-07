@@ -31,6 +31,10 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val currentCaregiverId: StateFlow<String?> = family.currentCaregiver.map { it?.id }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Caregiver row linked to this account. Used to decide who can be removed. */
+    val signedInCaregiver: StateFlow<CaregiverEntity?> = family.signedInCaregiver
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     val filters: StateFlow<Set<FilterOption>> = container.preferences.filters
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
@@ -50,5 +54,25 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
 
     fun addCaregiver(name: String) = viewModelScope.launch {
         family.addCaregiver(name)
+    }
+
+    fun removeCaregiver(id: String, onDone: () -> Unit, onError: (String) -> Unit) = viewModelScope.launch {
+        try {
+            family.removeCaregiver(id)
+            onDone()
+        } catch (e: Exception) {
+            onError(caregiverRemovalError(e.message))
+        }
+    }
+}
+
+private fun caregiverRemovalError(message: String?): String {
+    val text = message.orEmpty()
+    return when {
+        text.contains("only owners can remove", ignoreCase = true) ->
+            "Only the family owner can remove another signed-in caregiver."
+        text.contains("needs to keep one owner") -> text
+        text.isBlank() -> "Couldn't remove that caregiver. Check your connection and try again."
+        else -> text
     }
 }

@@ -1,6 +1,7 @@
 package com.lifestyle.nestly.ui.account
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +32,9 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifestyle.nestly.appContainer
+import com.lifestyle.nestly.data.model.CaregiverEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
+import com.lifestyle.nestly.data.model.canRemoveCaregiver
 import kotlinx.coroutines.launch
 import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.ui.AppViewModel
@@ -83,9 +87,13 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
     val profiles by appViewModel.profiles.collectAsStateWithLifecycle()
     val caregivers by appViewModel.caregivers.collectAsStateWithLifecycle()
     val currentCaregiverId by appViewModel.currentCaregiverId.collectAsStateWithLifecycle()
+    val signedIn by appViewModel.signedInCaregiver.collectAsStateWithLifecycle()
     var addingChild by remember { mutableStateOf(false) }
     var editingChild by remember { mutableStateOf<ProfileEntity?>(null) }
     var addingCaregiver by remember { mutableStateOf(false) }
+    var pendingRemoval by remember { mutableStateOf<CaregiverEntity?>(null) }
+    var removing by remember { mutableStateOf(false) }
+    var removeError by remember { mutableStateOf<String?>(null) }
 
     DetailScreen("Family", onBack) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -103,11 +111,26 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
             MenuRow("Add child", serif = false, chevron = false, onClick = { addingChild = true })
             SectionHeading("Caregivers")
             caregivers.forEach { caregiver ->
-                MenuRow(
-                    caregiver.name,
-                    subtitle = if (caregiver.id == currentCaregiverId) "Your Profile" else "Tap if this is you",
-                    onClick = { appViewModel.selectCaregiver(caregiver.id) },
-                )
+                val subtitle = if (caregiver.id == currentCaregiverId) "Your Profile" else "Tap if this is you"
+                val canRemove = canRemoveCaregiver(signedIn, caregiver, caregivers)
+                if (canRemove) {
+                    CaregiverRow(
+                        name = caregiver.name,
+                        subtitle = subtitle,
+                        action = if (caregiver.id == signedIn?.id) "Leave" else "Remove",
+                        onSelect = { appViewModel.selectCaregiver(caregiver.id) },
+                        onRemove = { removeError = null; pendingRemoval = caregiver },
+                    )
+                } else {
+                    MenuRow(
+                        caregiver.name,
+                        subtitle = subtitle,
+                        onClick = { appViewModel.selectCaregiver(caregiver.id) },
+                    )
+                }
+            }
+            removeError?.let {
+                Text(it, style = NestlyType.Small, color = NestlyColors.Danger, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             }
             MenuRow("Add caregiver", serif = false, chevron = false, onClick = { addingCaregiver = true })
             SectionHeading("Invite to this family")
@@ -151,6 +174,104 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                 if (name.isNotBlank()) appViewModel.addCaregiver(name)
             },
         )
+    }
+    pendingRemoval?.let { caregiver ->
+        val leaving = caregiver.id == signedIn?.id
+        AlertDialog(
+            onDismissRequest = { if (!removing) pendingRemoval = null },
+            containerColor = NestlyColors.Surface,
+            title = {
+                Text(
+                    if (leaving) "Leave this family?" else "Remove ${caregiver.name}?",
+                    style = NestlyType.RowLabel,
+                )
+            },
+            text = {
+                Text(
+                    when {
+                        leaving -> "You'll lose access to this family's children and entries until someone invites you back."
+                        caregiver.userId == null -> "Past entries stay attributed to ${caregiver.name}. You can add them again later."
+                        else -> "${caregiver.name} will lose access to this family. Past entries stay attributed to them. Adding this name again, or a new invite, brings them back."
+                    },
+                    style = NestlyType.Body,
+                    color = NestlyColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !removing,
+                    onClick = {
+                        removing = true
+                        appViewModel.removeCaregiver(
+                            caregiver.id,
+                            onDone = {
+                                removing = false
+                                pendingRemoval = null
+                            },
+                            onError = { message ->
+                                removing = false
+                                pendingRemoval = null
+                                removeError = message
+                            },
+                        )
+                    },
+                ) {
+                    Text(
+                        when {
+                            removing && leaving -> "Leaving…"
+                            removing -> "Removing…"
+                            leaving -> "Leave"
+                            else -> "Remove"
+                        },
+                        color = NestlyColors.Danger,
+                        style = NestlyType.Button,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemoval = null }, enabled = !removing) {
+                    Text("Cancel", color = NestlyColors.AccentText, style = NestlyType.Button)
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun CaregiverRow(
+    name: String,
+    subtitle: String,
+    action: String,
+    onSelect: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Column(Modifier.background(NestlyColors.Surface)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 82.dp)
+                .padding(start = 20.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clickable(onClick = onSelect)
+                    .padding(vertical = 12.dp),
+            ) {
+                Text(name, style = NestlyType.RowLabel)
+                Text(subtitle, style = NestlyType.Small, color = NestlyColors.TextSecondary)
+            }
+            Text(
+                action,
+                style = NestlyType.Button,
+                color = NestlyColors.Danger,
+                modifier = Modifier
+                    .clickable(onClick = onRemove)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+            )
+        }
+        RowDivider()
     }
 }
 

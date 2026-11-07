@@ -291,7 +291,8 @@ Rules:
 - `joinWithInvite(code, name)` — call RPC with `code.trimmed` and `name.trimmed`; empty result → "Invite is invalid or expired". Store returned caregiver id as current caregiver.
 - `createInvite(familyId)` — insert `{id, family_id}` then read back `code`.
 - `updateChild(profile)` — version-checked.
-- `addCaregiver(name)` — name-only `MEMBER`; if the name already exists return the existing one.
+- `addCaregiver(name)` — name-only `MEMBER`. If that name already exists and is active, return it. If it exists only as a soft-deleted row, clear `deleted_at` and return it (names are unique per family, including removed rows).
+- `removeCaregiver(id)` — version-checked soft delete (`deleted_at = now`, `version = version + 1`). Allowed for a name-only caregiver, for the caller themselves, or for another signed-in member when the caller is OWNER. Refused with "A family needs to keep one owner." when the target is the last OWNER. The database trigger still rejects a non-owner removing another signed-in member (`only owners can remove other members`). Removing yourself also bumps the profile and family ticks so the app returns to onboarding.
 - `currentFamilyId` — selected profile's family, else first family.
 - `clearCurrentFamilyData` (DEBUG builds only) — hard-delete in order: activity, reminder, appointment_question, appointment, note, family_invite, profile, family, then caregivers; also delete all storage objects under `{familyId}/`.
 
@@ -657,7 +658,7 @@ Rows: **Family**, **Settings**, **Subscription**, **Help**. Section "Data": **Im
 
 ### 18.1 Family
 - **Children**: each row name + age + "Tap to edit" → Edit Child dialog (Name, Boy/Girl, Birthdate). Save → version-checked update **and selects that child**. **Add child** (asks "Your name" only if the family has no caregivers).
-- **Caregivers**: each row name + "Your Profile" (if current) or "Tap if this is you" (tap → set current caregiver). **Add caregiver** → name-only.
+- **Caregivers**: each row name + "Your Profile" (if current) or "Tap if this is you" (tap → set current caregiver). **Remove** on someone else, or **Leave** on your own row, when removal is allowed; confirm, then soft-delete. No action on the last owner, or on another signed-in member when you are not the owner. **Add caregiver** → name-only, or restores a removed caregiver with that same name.
 - **Invite**: **Create invite code** → "Code: {CODE} — share it with another caregiver" (add a Copy/Share action).
 
 ### 18.2 Settings

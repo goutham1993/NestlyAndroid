@@ -5,6 +5,8 @@ import com.lifestyle.nestly.data.model.FamilyEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.ProfileType
 import com.lifestyle.nestly.data.model.Sex
+import com.lifestyle.nestly.data.model.canRemoveCaregiver
+import com.lifestyle.nestly.data.model.caregiverRemovalDeniedMessage
 import com.lifestyle.nestly.data.prefs.UserPreferences
 import com.lifestyle.nestly.data.supabase.AcceptInviteParams
 import com.lifestyle.nestly.data.supabase.AcceptInviteResult
@@ -112,6 +114,10 @@ class FamilyRepository(
             }.decodeList<CaregiverDto>().map { it.toEntity() }
         }
     }.shareIn(scope, SharingStarted.Eagerly, replay = 1)
+
+    /** The caregiver row linked to the signed-in account, if this family has one. */
+    val signedInCaregiver: Flow<CaregiverEntity?> =
+        caregivers.map { all -> all.find { it.userId != null && it.userId == authUserId } }
 
     /** The caregiver linked to the signed-in account, falling back to the first caregiver. */
     val currentCaregiver: Flow<CaregiverEntity?> =
@@ -289,7 +295,27 @@ class FamilyRepository(
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return null
         val familyId = selectedProfileFamilyId() ?: return null
-        fetchCaregivers(familyId).find { it.name == trimmed }?.let { return it }
+        // Names are unique per family, including soft-deleted rows, so adding a
+        // name that was removed brings that caregiver back.
+        val sameName = client.from("caregiver").select {
+            filter {
+                eq("family_id", familyId)
+                eq("name", trimmed)
+            }
+            limit(1)
+        }.decodeSingleOrNull<CaregiverDto>()?.toEntity()
+        if (sameName != null) {
+            if (sameName.deletedAt == null) return sameName
+            val restored = sameName.copy(deletedAt = null, updatedAt = clock(), version = sameName.version + 1)
+            client.from("caregiver").update(restored.toDto()) {
+                filter {
+                    eq("id", sameName.id)
+                    eq("version", sameName.version)
+                }
+            }
+            RefreshBus.invalidate(RefreshBus.CAREGIVER)
+            return restored
+        }
         val now = clock()
         val caregiver = CaregiverEntity(
             id = UUID.randomUUID().toString(),
@@ -301,6 +327,35 @@ class FamilyRepository(
         client.from("caregiver").insert(caregiver.toDto())
         RefreshBus.invalidate(RefreshBus.CAREGIVER)
         return caregiver
+    }
+
+    /**
+     * Soft-deletes a caregiver. Name-only caregivers and the caller themselves
+     * can be removed by any member; removing another signed-in member requires
+     * OWNER. The last owner cannot be removed. Leaving refreshes profiles so
+     * the app returns to onboarding once this account no longer sees the family.
+     */
+    suspend fun removeCaregiver(id: String) {
+        val familyId = selectedProfileFamilyId() ?: error("No family selected.")
+        val all = fetchCaregivers(familyId)
+        val target = all.find { it.id == id } ?: return
+        val actor = all.find { it.userId != null && it.userId == authUserId }
+        if (!canRemoveCaregiver(actor, target, all)) {
+            error(caregiverRemovalDeniedMessage(target, all))
+        }
+        val deleted = target.copy(deletedAt = clock(), updatedAt = clock(), version = target.version + 1)
+        client.from("caregiver").update(deleted.toDto()) {
+            filter {
+                eq("id", id)
+                eq("version", target.version)
+            }
+        }
+        val leaving = target.userId != null && target.userId == authUserId
+        if (leaving) {
+            RefreshBus.invalidate(RefreshBus.CAREGIVER, RefreshBus.PROFILE, RefreshBus.FAMILY)
+        } else {
+            RefreshBus.invalidate(RefreshBus.CAREGIVER)
+        }
     }
 
     private suspend fun selectedProfileFamilyId(): String? = selectedProfile.first()?.familyId

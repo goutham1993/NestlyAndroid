@@ -24,6 +24,26 @@ data class CaregiverEntity(
     val version: Int = 1,
 )
 
+/**
+ * A family member may soft-delete a name-only caregiver, themselves, or, when they
+ * are an OWNER, another signed-in member. The last OWNER stays so the family
+ * always has someone who can manage membership.
+ */
+fun canRemoveCaregiver(actor: CaregiverEntity?, target: CaregiverEntity, family: List<CaregiverEntity>): Boolean {
+    if (actor == null) return false
+    if (target.role == "OWNER" && family.count { it.role == "OWNER" } <= 1) return false
+    val isSelf = actor.id == target.id
+    val nameOnly = target.userId == null
+    return nameOnly || isSelf || actor.role == "OWNER"
+}
+
+fun caregiverRemovalDeniedMessage(target: CaregiverEntity, family: List<CaregiverEntity>): String =
+    if (target.role == "OWNER" && family.count { it.role == "OWNER" } <= 1) {
+        "A family needs to keep one owner."
+    } else {
+        "Only the family owner can remove another signed-in caregiver."
+    }
+
 data class ProfileEntity(
     val id: String,
     val familyId: String,

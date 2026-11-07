@@ -15,6 +15,7 @@ import com.lifestyle.nestly.data.supabase.toIso
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.ZoneId
@@ -54,8 +55,7 @@ class ActivityRepository(
                     eq("profile_id", profileId)
                     filter("profile_id", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null)
                 }
-                gte("start_time", fromTime.toIso())
-                lt("start_time", toTime.toIso())
+                startTimeBetween(fromTime, toTime)
             }
             order("start_time", Order.DESCENDING)
         }.decodeList<ActivityDto>().map { it.toEntity() }
@@ -94,8 +94,7 @@ class ActivityRepository(
                 eq("profile_id", profileId)
                 eq("type", ActivityType.BOTTLE_FEED.name)
                 filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null)
-                gte("start_time", fromTime.toIso())
-                lt("start_time", toTime.toIso())
+                startTimeBetween(fromTime, toTime)
             }
             order("start_time", Order.ASCENDING)
         }.decodeList<ActivityDto>().map { it.toEntity() }
@@ -115,8 +114,7 @@ class ActivityRepository(
                 eq("family_id", familyId)
                 eq("type", ActivityType.PUMP.name)
                 filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null)
-                gte("start_time", fromTime.toIso())
-                lt("start_time", toTime.toIso())
+                startTimeBetween(fromTime, toTime)
             }
             order("start_time", Order.ASCENDING)
         }.decodeList<ActivityDto>().map { it.toEntity() }
@@ -238,4 +236,21 @@ class ActivityRepository(
 
     suspend fun resolvePhoto(activity: ActivityEntity): ActivityEntity =
         activity.copy(photoUri = photos.resolveToLocal(activity.photoUri))
+}
+
+/**
+ * supabase-kt keeps only the first filter on a column, so the two bounds have
+ * to share one `and`. [Long.MAX_VALUE] means "no end" (the dashboard and the
+ * nightstand); Postgres rejects that timestamptz, year ~292 million.
+ */
+private fun PostgrestFilterBuilder.startTimeBetween(fromTime: Long, toTime: Long) {
+    val from = fromTime.toIso()
+    if (toTime == Long.MAX_VALUE) {
+        gte("start_time", from)
+    } else {
+        and {
+            gte("start_time", from)
+            lt("start_time", toTime.toIso())
+        }
+    }
 }

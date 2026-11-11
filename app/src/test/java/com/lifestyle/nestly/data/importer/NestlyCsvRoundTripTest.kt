@@ -5,8 +5,10 @@ import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.BottleDetails
 import com.lifestyle.nestly.data.model.DiaperDetails
 import com.lifestyle.nestly.data.model.DiaperType
+import com.lifestyle.nestly.data.model.MealType
 import com.lifestyle.nestly.data.model.MilkType
 import com.lifestyle.nestly.data.model.PumpDetails
+import com.lifestyle.nestly.data.model.SolidsDetails
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -84,4 +86,31 @@ class NestlyCsvRoundTripTest {
         assertNotNull(parsedDiaper.diaper)
         assertEquals(DiaperType.WET, parsedDiaper.diaper?.diaperType)
     }
+
+    @Test
+    fun solidsMilkScheduleSurvivesExportAndParse() {
+        val keep = solids("s1", false)
+        val replace = solids("s2", true)
+        val csv = buildString {
+            append('\uFEFF')
+            appendLine(NestlyCsv.HEADER.joinToString(","))
+            appendLine(NestlyCsv.activityRow(keep))
+            appendLine(NestlyCsv.activityRow(replace))
+        }
+        val rows = CsvParser.parseRecords(StringReader(csv))
+        assertEquals(false, NestlyCsv.parseActivity(rows[0], now = 0L).solids?.resetsFeedSchedule)
+        assertEquals(true, NestlyCsv.parseActivity(rows[1], now = 0L).solids?.resetsFeedSchedule)
+    }
+
+    private fun solids(id: String, resets: Boolean) = ActivityEntity(
+        id = id,
+        familyId = "f",
+        profileId = "p",
+        type = ActivityType.SOLIDS,
+        startTime = 10,
+        timeZone = "UTC",
+        solids = SolidsDetails(MealType.LUNCH, listOf("Peas"), resetsFeedSchedule = resets),
+        createdAt = 1,
+        updatedAt = 2,
+    )
 }

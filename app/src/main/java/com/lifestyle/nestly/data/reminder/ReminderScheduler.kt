@@ -9,6 +9,7 @@ import com.lifestyle.nestly.AppContainer
 import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.model.AppointmentEntity
 import com.lifestyle.nestly.data.model.ReminderEntity
+import com.lifestyle.nestly.data.model.ReminderKind
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -77,11 +78,15 @@ class ReminderScheduler(private val context: Context) {
                 return@withContext
             }
             val profileId = reminder.profileId.orEmpty()
-            val last = container.activities.getLatestOf(
-                reminder.familyId,
-                profileId,
-                ReminderLogic.typesFor(reminder.kind),
-            )
+            val last = if (reminder.kind == ReminderKind.FEED) {
+                container.activities.fetchLatestFeedForSchedule(reminder.familyId, profileId)
+            } else {
+                container.activities.getLatestOf(
+                    reminder.familyId,
+                    profileId,
+                    ReminderLogic.typesFor(reminder.kind),
+                )
+            }
             val fireAt = ReminderLogic.nextFireMs(last?.startTime, reminder.intervalMinutes) ?: run {
                 cancel(reminder.id)
                 return@withContext

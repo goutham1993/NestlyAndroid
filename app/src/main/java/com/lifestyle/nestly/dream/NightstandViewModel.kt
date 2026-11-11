@@ -120,6 +120,7 @@ class NightstandViewModel(
                 container.activities.range(familyId, profileId, since, Long.MAX_VALUE),
                 container.reminders.observeForProfile(familyId, profileId),
                 container.preferences.units,
+                container.activities.latestFeedForSchedule(familyId, profileId),
             )
             combine(flows) { values ->
                 @Suppress("UNCHECKED_CAST")
@@ -128,6 +129,7 @@ class NightstandViewModel(
                     recent = values[1] as List<ActivityEntity>,
                     reminders = values[2] as List<com.lifestyle.nestly.data.model.ReminderEntity>,
                     units = values[3] as UnitPrefs,
+                    scheduleFeed = values[4] as ActivityEntity?,
                 )
             }
         }
@@ -142,7 +144,7 @@ class NightstandViewModel(
             NightstandState(
                 profileName = profile.name,
                 lastFeed = raw.lastFeed,
-                nextFeed = ReminderLogic.nextFeedState(raw.lastFeed?.startTime, interval, nowMs),
+                nextFeed = ReminderLogic.nextFeedState(raw.scheduleFeed?.startTime, interval, nowMs),
                 intervalMinutes = interval,
                 todayFeedCount = todayFeeds.size,
                 todayBottleMl = todayFeeds.sumOf { it.bottle?.totalMl ?: 0.0 },
@@ -164,6 +166,7 @@ class NightstandViewModel(
         val recent: List<ActivityEntity>,
         val reminders: List<com.lifestyle.nestly.data.model.ReminderEntity>,
         val units: UnitPrefs,
+        val scheduleFeed: ActivityEntity?,
     )
 
     private companion object {

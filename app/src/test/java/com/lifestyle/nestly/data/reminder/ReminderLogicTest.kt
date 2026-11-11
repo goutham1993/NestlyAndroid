@@ -1,7 +1,13 @@
 package com.lifestyle.nestly.data.reminder
 
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.MealType
+import com.lifestyle.nestly.data.model.SolidsDetails
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReminderLogicTest {
@@ -22,6 +28,20 @@ class ReminderLogicTest {
     @Test
     fun noActivityMeansNoFire() {
         assertNull(ReminderLogic.nextFireMs(null, 180, now = 1_000L))
+    }
+
+    @Test
+    fun resetsFeedScheduleForMilkAndSolidsChoice() {
+        val bottle = feed(ActivityType.BOTTLE_FEED, 1_000)
+        val breast = feed(ActivityType.BREASTFEED, 2_000)
+        val keeps = feed(ActivityType.SOLIDS, 3_000, SolidsDetails(MealType.LUNCH, listOf("Peas"), resetsFeedSchedule = false))
+        val replaces = feed(ActivityType.SOLIDS, 4_000, SolidsDetails(MealType.DINNER, listOf("Rice"), resetsFeedSchedule = true))
+        val legacy = feed(ActivityType.SOLIDS, 5_000, SolidsDetails(MealType.SNACK, listOf("Banana")))
+        assertTrue(ReminderLogic.resetsFeedSchedule(bottle))
+        assertTrue(ReminderLogic.resetsFeedSchedule(breast))
+        assertFalse(ReminderLogic.resetsFeedSchedule(keeps))
+        assertTrue(ReminderLogic.resetsFeedSchedule(replaces))
+        assertTrue(ReminderLogic.resetsFeedSchedule(legacy))
     }
 
     @Test
@@ -64,4 +84,16 @@ class ReminderLogicTest {
     fun nextFeedNoFeedWithoutHistory() {
         assertEquals(NextFeedState.NoFeed, ReminderLogic.nextFeedState(null, 180, now = 1_000L))
     }
+
+    private fun feed(type: ActivityType, start: Long, solids: SolidsDetails? = null) = ActivityEntity(
+        id = type.name + start,
+        familyId = "f",
+        profileId = "p",
+        type = type,
+        startTime = start,
+        timeZone = "UTC",
+        solids = solids,
+        createdAt = start,
+        updatedAt = start,
+    )
 }

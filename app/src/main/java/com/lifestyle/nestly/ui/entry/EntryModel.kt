@@ -78,6 +78,8 @@ data class EntryDraft(
 
     val mealType: MealType? = null,
     val foods: List<String> = emptyList(),
+    /** New solids keep the milk clock until the user marks them as a milk replacement. */
+    val solidsResetsFeedSchedule: Boolean = false,
 
     val pumpMode: PumpMode = PumpMode.TOTAL,
     val pumpSec: Long = 0,

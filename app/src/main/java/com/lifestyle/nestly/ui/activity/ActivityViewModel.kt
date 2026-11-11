@@ -33,6 +33,8 @@ data class DashboardData(
     /** Everything since the start of yesterday, newest first. */
     val recent: List<ActivityEntity>,
     val latest: Map<CardKind, ActivityEntity?>,
+    /** Latest bottle, breastfeed, or solids that restarts the milk clock. */
+    val scheduleFeed: ActivityEntity?,
     val growth: List<ActivityEntity>,
     val milestones: List<ActivityEntity>,
     val latestMedical: ActivityEntity?,
@@ -110,6 +112,7 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
             activities.allOf(f, p, listOf(ActivityType.MILESTONE)),
             activities.latestOf(f, p, listOf(ActivityType.MEDICAL)),
             activities.latestOf(f, p, listOf(ActivityType.VACCINE)),
+            activities.latestFeedForSchedule(f, p),
         ) + cards.map { activities.latestOf(f, p, it.types) }
 
         return combine(flows) { values ->
@@ -121,7 +124,8 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
                 milestones = values[2] as List<ActivityEntity>,
                 latestMedical = values[3] as ActivityEntity?,
                 latestVaccine = values[4] as ActivityEntity?,
-                latest = cards.mapIndexed { i, card -> card to values[5 + i] as ActivityEntity? }.toMap(),
+                scheduleFeed = values[5] as ActivityEntity?,
+                latest = cards.mapIndexed { i, card -> card to values[6 + i] as ActivityEntity? }.toMap(),
             )
         }
     }

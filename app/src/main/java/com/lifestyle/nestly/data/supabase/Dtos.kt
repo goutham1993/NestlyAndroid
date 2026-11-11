@@ -1,5 +1,7 @@
 package com.lifestyle.nestly.data.supabase
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.AppointmentEntity
@@ -173,6 +175,10 @@ data class ActivityDto(
 
     @SerialName("solids_meal_type") val solidsMealType: MealType? = null,
     @SerialName("solids_foods") val solidsFoods: List<String>? = null,
+    /** Omitted when null so bottle and breastfeed saves do not write a not-null column. */
+    @OptIn(ExperimentalSerializationApi::class)
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    @SerialName("solids_resets_feed_schedule") val solidsResetsFeedSchedule: Boolean? = null,
 
     @SerialName("routine_name") val routineName: String? = null,
     @SerialName("baby_first_title") val babyFirstTitle: String? = null,
@@ -212,7 +218,11 @@ data class ActivityDto(
         growth = if (growthWeightKg != null || growthHeightCm != null || growthHeadCm != null)
             GrowthDetails(growthWeightKg, growthHeightCm, growthHeadCm) else null,
         milestone = milestoneTitle?.let { MilestoneDetails(it, milestoneKey) },
-        solids = if (solidsMealType != null || solidsFoods != null) SolidsDetails(solidsMealType, solidsFoods.orEmpty()) else null,
+        solids = if (type == ActivityType.SOLIDS || solidsMealType != null || solidsFoods != null || solidsResetsFeedSchedule != null) {
+            SolidsDetails(solidsMealType, solidsFoods.orEmpty(), solidsResetsFeedSchedule ?: true)
+        } else {
+            null
+        },
         routine = routineName?.let(::RoutineDetails),
         babyFirst = babyFirstTitle?.let(::BabyFirstDetails),
         medical = if (medicalTemperatureC != null || medicalMedicationName != null || medicalDose != null)
@@ -264,6 +274,7 @@ fun ActivityEntity.toDto() = ActivityDto(
     milestoneKey = milestone?.milestoneKey,
     solidsMealType = solids?.mealType,
     solidsFoods = solids?.foods,
+    solidsResetsFeedSchedule = if (type == ActivityType.SOLIDS) solids?.resetsFeedSchedule ?: true else null,
     routineName = routine?.name,
     babyFirstTitle = babyFirst?.title,
     medicalTemperatureC = medical?.temperatureC,

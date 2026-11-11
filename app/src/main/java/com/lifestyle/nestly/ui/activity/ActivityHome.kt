@@ -477,7 +477,7 @@ private fun statusFor(
         CardKind.FEED -> {
             if (latest == null) GlanceStatus.Empty("Track a feeding")
             else {
-                val next = ReminderLogic.nextFeedState(latest.startTime, feedIntervalMinutes, now)
+                val next = ReminderLogic.nextFeedState(data.scheduleFeed?.startTime, feedIntervalMinutes, now)
                 val footnote = Format.nextFeeding(next)?.replace("Next feeding", "Next")
                 val warning = next is NextFeedState.DueNow || next is NextFeedState.Overdue
                 GlanceStatus.Value(Format.ago(latest.startTime, now), feedDetail(latest, units), footnote, warning)

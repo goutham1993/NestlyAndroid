@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cookie
 import androidx.compose.material.icons.outlined.DinnerDining
@@ -279,6 +280,42 @@ fun SolidsForm(form: FormScope) {
     RowDivider()
     TimeRow(form, "Start Time")
 
+    Text(
+        "Milk schedule",
+        style = NestlyType.Small.copy(fontWeight = FontWeight.SemiBold),
+        color = NestlyColors.TextSecondary,
+        modifier = Modifier.padding(start = 20.dp, top = 16.dp, end = 20.dp),
+    )
+    Text(
+        "Does this replace a milk feed?",
+        style = NestlyType.Small,
+        color = NestlyColors.TextSecondary,
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+    )
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        MilkScheduleChoice(
+            title = "Keeps milk schedule",
+            subtitle = "Next feed stays on the current clock",
+            selected = !d.solidsResetsFeedSchedule,
+            onClick = { form.update { it.copy(solidsResetsFeedSchedule = false) } },
+            modifier = Modifier.weight(1f),
+        )
+        MilkScheduleChoice(
+            title = "Replaces milk feed",
+            subtitle = "Restarts the next-feed timer",
+            selected = d.solidsResetsFeedSchedule,
+            onClick = { form.update { it.copy(solidsResetsFeedSchedule = true) } },
+            modifier = Modifier.weight(1f),
+        )
+    }
+    Spacer(Modifier.height(16.dp))
+    RowDivider()
+
     var picking by remember { mutableStateOf(false) }
     FormRow(
         "Food",
@@ -300,6 +337,32 @@ fun SolidsForm(form: FormScope) {
                 form.update { it.copy(foods = foods) }
             },
         )
+    }
+}
+
+@Composable
+private fun MilkScheduleChoice(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) NestlyColors.Accent.copy(alpha = 0.12f) else NestlyColors.Surface)
+            .border(
+                1.dp,
+                if (selected) NestlyColors.Accent else NestlyColors.Divider,
+                RoundedCornerShape(16.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+    ) {
+        Text(title, style = NestlyType.Small.copy(fontWeight = FontWeight.SemiBold), color = NestlyColors.TextPrimary)
+        Spacer(Modifier.height(4.dp))
+        Text(subtitle, style = NestlyType.Small, color = NestlyColors.TextSecondary)
     }
 }
 

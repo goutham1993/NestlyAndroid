@@ -128,7 +128,7 @@ private fun FeedCard(ctx: CardContext) {
         }
         // Above the Show More / Show Less row that TodayList renders.
         if (latest != null) {
-            NextFeedingRow(ReminderLogic.nextFeedState(latest.startTime, ctx.feedIntervalMinutes, ctx.now))
+            NextFeedingRow(ReminderLogic.nextFeedState(ctx.data.scheduleFeed?.startTime, ctx.feedIntervalMinutes, ctx.now))
         }
         TodayList(ctx, CardKind.FEED, showIcons = true, defaultExpanded = true)
     }

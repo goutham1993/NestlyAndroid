@@ -2,6 +2,7 @@ package com.lifestyle.nestly.ui.entry
 
 import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.BreastSide
+import com.lifestyle.nestly.data.model.MealType
 import com.lifestyle.nestly.data.model.MilkType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -108,6 +109,23 @@ class EntryBuilderTest {
         val openPump = EntryBuilder.build(EntryKind.PUMP, EntryDraft(startTime = 1_000, startTimeSet = true), ctx).single()
         assertNull(openPump.endTime)
         assertEquals(0L, openPump.pump!!.durationSec)
+    }
+
+    @Test
+    fun solidsDraftDefaultsToKeepingMilkScheduleAndRoundTrips() {
+        val draft = EntryDraft(startTime = 1_000, mealType = MealType.LUNCH, foods = listOf("Avocado"))
+        assertFalse(draft.solidsResetsFeedSchedule)
+        val row = EntryBuilder.build(EntryKind.SOLIDS, draft, ctx).single()
+        assertEquals(false, row.solids!!.resetsFeedSchedule)
+        assertFalse(EntryBuilder.draftOf(row).solidsResetsFeedSchedule)
+
+        val replace = EntryBuilder.build(
+            EntryKind.SOLIDS,
+            draft.copy(solidsResetsFeedSchedule = true),
+            ctx,
+        ).single()
+        assertEquals(true, replace.solids!!.resetsFeedSchedule)
+        assertTrue(EntryBuilder.draftOf(replace).solidsResetsFeedSchedule)
     }
 
     @Test

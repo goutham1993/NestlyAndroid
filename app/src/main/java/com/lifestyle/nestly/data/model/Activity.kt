@@ -85,6 +85,11 @@ data class MilestoneDetails(
 data class SolidsDetails(
     val mealType: MealType? = null,
     val foods: List<String> = emptyList(),
+    /**
+     * When true, this solids entry restarts the next-feed clock like milk.
+     * Missing older rows are treated as true. New logs default to false.
+     */
+    val resetsFeedSchedule: Boolean = true,
 )
 
 data class RoutineDetails(val name: String)

@@ -63,7 +63,13 @@ fun BabyAvatar(modifier: Modifier = Modifier) {
 
 /** Letter monogram on a soft accent circle, matching the iOS child avatar. */
 @Composable
-fun MonogramAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 56.dp, photoPath: String? = null) {
+fun MonogramAvatar(
+    name: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 56.dp,
+    photoPath: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
     val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString()
     val photos = LocalContext.current.appContainer.photos
     var bitmap by remember(photoPath) { mutableStateOf<ImageBitmap?>(null) }
@@ -79,6 +85,7 @@ fun MonogramAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 56.dp
         modifier
             .size(size)
             .clip(CircleShape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .background(NestlyColors.Accent.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center,
     ) {

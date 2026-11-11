@@ -227,7 +227,7 @@ fun SegmentedToggle(options: List<String>, selected: Int, onSelect: (Int) -> Uni
                     .fillMaxWidth()
                     .height(38.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (index == selected) NestlyColors.Surface else Color.Transparent)
+                    .background(if (index == selected) NestlyColors.SegmentSelected else Color.Transparent)
                     .clickable { onSelect(index) },
                 contentAlignment = Alignment.Center,
             ) {

@@ -2,9 +2,12 @@ package com.lifestyle.nestly.ui.activity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -39,6 +43,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -56,6 +61,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.catalog.MilestoneCatalog
 import com.lifestyle.nestly.data.growth.GrowthMetric
@@ -110,6 +117,7 @@ fun ActivityHome(
     onNotes: () -> Unit,
     onEditActivities: () -> Unit,
     onSelectProfile: (String) -> Unit,
+    onEditChild: (String) -> Unit,
     onShowSummary: () -> Unit,
 ) {
     val profile = dashboard?.profile ?: profiles.firstOrNull()
@@ -121,6 +129,7 @@ fun ActivityHome(
                 profiles = profiles,
                 now = now,
                 onSelectProfile = onSelectProfile,
+                onEditChild = { onEditChild(profile.id) },
                 onShowSummary = onShowSummary,
                 onReminders = onReminders,
                 onAppointments = onAppointments,
@@ -171,6 +180,7 @@ private fun HomeHeader(
     profiles: List<ProfileEntity>,
     now: Long,
     onSelectProfile: (String) -> Unit,
+    onEditChild: () -> Unit,
     onShowSummary: () -> Unit,
     onReminders: () -> Unit,
     onAppointments: () -> Unit,
@@ -179,6 +189,7 @@ private fun HomeHeader(
 ) {
     var menu by remember { mutableStateOf(false) }
     var switcher by remember { mutableStateOf(false) }
+    var viewingPhoto by remember { mutableStateOf(false) }
     val age = profile.birthDate?.let { birth ->
         Format.age(birth, Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate())
     }
@@ -187,7 +198,12 @@ private fun HomeHeader(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MonogramAvatar(profile.name, size = 56.dp, photoPath = profile.photoPath)
+        MonogramAvatar(
+            profile.name,
+            size = 56.dp,
+            photoPath = profile.photoPath,
+            onClick = { viewingPhoto = true },
+        )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             if (profiles.size > 1) {
@@ -233,6 +249,87 @@ private fun HomeHeader(
                 MenuItem("Doctor Appointments", Icons.Outlined.CalendarMonth) { menu = false; onAppointments() }
                 MenuItem("Notes", Icons.Outlined.EditNote) { menu = false; onNotes() }
                 MenuItem("Edit Activities", Icons.Outlined.Edit) { menu = false; onEditActivities() }
+            }
+        }
+    }
+    if (viewingPhoto) {
+        ProfilePhotoViewer(
+            name = profile.name,
+            photoPath = profile.photoPath,
+            onDismiss = { viewingPhoto = false },
+            onChange = {
+                viewingPhoto = false
+                onEditChild()
+            },
+        )
+    }
+}
+
+/** Full-screen photo, like a WhatsApp profile picture, with a way through to the child editor. */
+@Composable
+private fun ProfilePhotoViewer(
+    name: String,
+    photoPath: String?,
+    onDismiss: () -> Unit,
+    onChange: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss,
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Outlined.Close, "Close", tint = Color.White)
+                }
+                Text(
+                    name,
+                    style = NestlyType.SheetTitle,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(48.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 32.dp)) {
+                val side = maxWidth
+                Box(
+                    Modifier
+                        .size(side)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                        ),
+                ) {
+                    MonogramAvatar(name, size = side, photoPath = photoPath)
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onChange, modifier = Modifier.padding(bottom = 24.dp)) {
+                Text(
+                    if (photoPath == null) "Add photo" else "Change photo",
+                    color = Color(0xFFE08B6E),
+                    style = NestlyType.Button,
+                )
             }
         }
     }

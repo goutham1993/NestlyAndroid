@@ -4,23 +4,31 @@ import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +37,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -38,8 +50,9 @@ import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.Format
-import com.lifestyle.nestly.ui.components.FormRow
 import com.lifestyle.nestly.ui.components.MonogramAvatar
+import com.lifestyle.nestly.ui.components.NestlySwitch
+import com.lifestyle.nestly.ui.components.RowDivider
 import com.lifestyle.nestly.ui.components.SegmentedToggle
 import com.lifestyle.nestly.ui.photo.PhotoCropScreen
 import com.lifestyle.nestly.ui.photo.PhotoImages
@@ -66,7 +79,8 @@ fun ChildEditorScreen(
     var name by remember { mutableStateOf(initial?.name.orEmpty()) }
     var caregiver by remember { mutableStateOf("") }
     var sex by remember { mutableStateOf(initial?.sex) }
-    var birthDate by remember { mutableStateOf(initial?.birthDate) }
+    var hasBirthDate by remember { mutableStateOf(initial == null || initial.birthDate != null) }
+    var birthDate by remember { mutableStateOf(initial?.birthDate ?: LocalDate.now()) }
     var photoPath by remember { mutableStateOf(initial?.photoPath) }
     var pickingDate by remember { mutableStateOf(false) }
     var readingPhoto by remember { mutableStateOf(false) }
@@ -86,21 +100,16 @@ fun ChildEditorScreen(
         }
     }
     val valid = name.isNotBlank() && (!askCaregiverName || caregiver.isNotBlank())
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = NestlyColors.AccentText,
-        unfocusedBorderColor = NestlyColors.Divider,
-        cursorColor = NestlyColors.AccentText,
-        focusedLabelColor = NestlyColors.AccentText,
-        focusedTextColor = NestlyColors.TextPrimary,
-        unfocusedTextColor = NestlyColors.TextPrimary,
-    )
 
     Box(Modifier.fillMaxSize()) {
         DetailScreen(
             title = title,
             onBack = onBack,
             action = if (valid) if (initial == null) "Add" else "Save" else null,
-            onAction = { onSave(name.trim(), sex, birthDate, caregiver.trim(), photoPath) },
+            onAction = {
+                onSave(name.trim(), sex, birthDate.takeIf { hasBirthDate }, caregiver.trim(), photoPath)
+            },
+            centerTitle = true,
         ) {
             Column(
                 Modifier
@@ -109,8 +118,8 @@ fun ChildEditorScreen(
                     .padding(bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(12.dp))
-                MonogramAvatar(name.ifBlank { " " }, size = 96.dp, photoPath = photoPath)
+                Spacer(Modifier.height(8.dp))
+                MonogramAvatar(name.ifBlank { " " }, size = 72.dp, photoPath = photoPath)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     name.ifBlank { "Your little one" },
@@ -118,24 +127,20 @@ fun ChildEditorScreen(
                     color = if (name.isBlank()) NestlyColors.TextSecondary else NestlyColors.TextPrimary,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 if (readingPhoto) {
                     CircularProgressIndicator(color = NestlyColors.Accent, modifier = Modifier.padding(8.dp))
                 } else if (photoPath == null) {
-                    TextButton(onClick = {
+                    PhotoAction("Add Photo", Icons.Outlined.PhotoCamera, NestlyColors.AccentText) {
                         picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }) {
-                        Text("Add Photo", color = NestlyColors.AccentText, style = NestlyType.Button)
                     }
                 } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PhotoAction("Change Photo", Icons.Outlined.PhotoCamera, NestlyColors.AccentText) {
                             picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }) {
-                            Text("Change Photo", color = NestlyColors.AccentText, style = NestlyType.Button)
                         }
-                        TextButton(onClick = { photoPath = null }) {
-                            Text("Remove Photo", color = NestlyColors.Danger, style = NestlyType.Button)
+                        PhotoAction("Remove Photo", Icons.Outlined.Delete, NestlyColors.Danger) {
+                            photoPath = null
                         }
                     }
                 }
@@ -144,7 +149,7 @@ fun ChildEditorScreen(
                     style = NestlyType.Small,
                     color = NestlyColors.TextSecondary,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp),
+                    modifier = Modifier.padding(horizontal = 32.dp, vertical = 4.dp),
                 )
                 photoError?.let {
                     Text(
@@ -155,51 +160,65 @@ fun ChildEditorScreen(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                OutlinedTextField(
-                    name,
-                    { name = it },
-                    label = { Text("First Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = fieldColors,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                )
-                Spacer(Modifier.height(16.dp))
-                SegmentedToggle(
-                    options = listOf("Boy", "Girl"),
-                    selected = when (sex) {
-                        Sex.MALE -> 0
-                        Sex.FEMALE -> 1
-                        else -> -1
-                    },
-                    onSelect = { sex = if (it == 0) Sex.MALE else Sex.FEMALE },
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                )
-                FormRow(
-                    "Birthdate",
-                    value = birthDate?.let(Format::date),
-                    action = if (birthDate == null) "Add" else null,
-                    onClick = { pickingDate = true },
-                )
-                if (askCaregiverName) {
-                    OutlinedTextField(
-                        caregiver,
-                        { caregiver = it },
-                        label = { Text("Your Name") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                        colors = fieldColors,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                InsetGroup {
+                    GroupedField(name, { name = it }, "First Name")
+                    RowDivider(Modifier.padding(start = 16.dp))
+                    SegmentedToggle(
+                        options = listOf("Boy", "Girl"),
+                        selected = when (sex) {
+                            Sex.MALE -> 0
+                            Sex.FEMALE -> 1
+                            else -> -1
+                        },
+                        onSelect = { sex = if (it == 0) Sex.MALE else Sex.FEMALE },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                     )
+                }
+                Spacer(Modifier.height(20.dp))
+                InsetGroup {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Birthdate", style = NestlyType.Body, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
+                        NestlySwitch(hasBirthDate, { hasBirthDate = it })
+                    }
+                    if (hasBirthDate) {
+                        RowDivider(Modifier.padding(start = 16.dp))
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
+                                .clickable { pickingDate = true }
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Birthdate", style = NestlyType.Body, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
+                            Text(
+                                Format.date(birthDate),
+                                style = NestlyType.Body,
+                                color = NestlyColors.TextPrimary,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(NestlyColors.Tertiary)
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+                if (askCaregiverName) {
+                    Spacer(Modifier.height(20.dp))
+                    InsetGroup {
+                        GroupedField(caregiver, { caregiver = it }, "Your Name")
+                    }
                     Text(
                         "Shown to other caregivers next to the entries you log.",
                         style = NestlyType.Small,
                         color = NestlyColors.TextSecondary,
-                        modifier = Modifier.padding(horizontal = 20.dp),
+                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -249,7 +268,7 @@ fun ChildEditorScreen(
     if (pickingDate) {
         val zone = ZoneId.systemDefault()
         DateTimePickerDialog(
-            initial = (birthDate ?: LocalDate.now()).atStartOfDay(zone).toInstant().toEpochMilli(),
+            initial = birthDate.atStartOfDay(zone).toInstant().toEpochMilli(),
             dateOnly = true,
             onDismiss = { pickingDate = false },
             onConfirm = {
@@ -257,5 +276,56 @@ fun ChildEditorScreen(
                 pickingDate = false
             },
         )
+    }
+}
+
+/** Inset grouped card, matching an iOS Form section. */
+@Composable
+private fun InsetGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(NestlyColors.Surface),
+        content = content,
+    )
+}
+
+@Composable
+private fun GroupedField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        textStyle = NestlyType.Body.copy(color = NestlyColors.TextPrimary),
+        cursorBrush = SolidColor(NestlyColors.AccentText),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .padding(horizontal = 16.dp, vertical = 11.dp),
+        decorationBox = { inner ->
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                if (value.isEmpty()) {
+                    Text(placeholder, style = NestlyType.Body, color = NestlyColors.TextMuted)
+                }
+                inner()
+            }
+        },
+    )
+}
+
+@Composable
+private fun PhotoAction(text: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Text(text, color = color, style = NestlyType.Button)
     }
 }

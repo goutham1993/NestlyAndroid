@@ -108,6 +108,7 @@ fun ActivityTab(
             onNotes = { navigate(Routes.NOTES) },
             onEditActivities = { navigate(Routes.EDIT_ACTIVITIES) },
             onSelectProfile = appViewModel::selectProfile,
+            onEditChild = { navigate(Routes.childEdit(it)) },
             onShowSummary = { showSummary = true },
         )
     }

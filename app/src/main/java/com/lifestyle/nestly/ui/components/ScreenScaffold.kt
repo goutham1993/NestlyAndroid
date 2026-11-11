@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lifestyle.nestly.ui.theme.NestlyColors
@@ -39,6 +40,7 @@ fun DetailScreen(
     onBack: () -> Unit,
     action: String? = null,
     onAction: (() -> Unit)? = null,
+    centerTitle: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -50,30 +52,63 @@ fun DetailScreen(
             // content — e.g. the appointment notes field — can scroll above it.
             .imePadding(),
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = NestlyColors.Accent)
-            }
-            Text(
-                title,
-                style = NestlyType.SheetTitle,
-                color = NestlyColors.TextPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            if (action != null && onAction != null) {
+        if (centerTitle) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp),
+                contentAlignment = Alignment.Center,
+            ) {
                 Text(
-                    action,
-                    style = NestlyType.Button,
-                    color = NestlyColors.Accent,
-                    modifier = Modifier
-                        .clickable(onClick = onAction)
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    title,
+                    style = NestlyType.SheetTitle,
+                    color = NestlyColors.TextPrimary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 88.dp),
                 )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = NestlyColors.Accent)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (action != null && onAction != null) {
+                        Text(
+                            action,
+                            style = NestlyType.Button,
+                            color = NestlyColors.Accent,
+                            modifier = Modifier
+                                .clickable(onClick = onAction)
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                        )
+                    }
+                }
+            }
+        } else {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = NestlyColors.Accent)
+                }
+                Text(
+                    title,
+                    style = NestlyType.SheetTitle,
+                    color = NestlyColors.TextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                if (action != null && onAction != null) {
+                    Text(
+                        action,
+                        style = NestlyType.Button,
+                        color = NestlyColors.Accent,
+                        modifier = Modifier
+                            .clickable(onClick = onAction)
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                    )
+                }
             }
         }
         Column(Modifier.weight(1f), content = content)

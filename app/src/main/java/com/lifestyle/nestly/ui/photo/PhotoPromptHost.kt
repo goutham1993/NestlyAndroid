@@ -61,8 +61,7 @@ fun PhotoPromptHost(appViewModel: AppViewModel, navigate: (String) -> Unit) {
         confirmButton = {
             TextButton(onClick = {
                 appViewModel.hidePhotoPromptForSession()
-                appViewModel.requestPhotoEdit(due.profileId)
-                navigate(Routes.FAMILY)
+                navigate(Routes.childEdit(due.profileId))
             }) {
                 Text("Add Photo", color = NestlyColors.AccentText)
             }

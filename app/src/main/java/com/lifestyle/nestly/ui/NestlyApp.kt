@@ -40,6 +40,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.lifestyle.nestly.appContainer
+import com.lifestyle.nestly.ui.account.ChildEditorScreen
 import com.lifestyle.nestly.ui.account.AccountTab
 import com.lifestyle.nestly.ui.account.CommunicationPrefsScreen
 import com.lifestyle.nestly.ui.account.EmailPasswordScreen
@@ -90,6 +91,10 @@ object Routes {
     const val NOTE_DETAIL = "notes/{id}"
     fun noteDetail(id: String) = "notes/$id"
     const val FAMILY = "family"
+    const val CHILD_NEW = "child/new/{askCaregiver}"
+    fun childNew(askCaregiver: Boolean) = "child/new/${if (askCaregiver) "1" else "0"}"
+    const val CHILD_EDIT = "child/edit/{id}"
+    fun childEdit(id: String) = "child/edit/$id"
     const val SETTINGS = "settings"
     const val UNITS = "units"
     const val EMAIL = "email"
@@ -236,7 +241,42 @@ fun NestlyApp(
                 composable(Routes.NOTE_DETAIL) { backStack ->
                     NoteDetailScreen(noteId = backStack.arguments?.getString("id"), onBack = back)
                 }
-                composable(Routes.FAMILY) { FamilyScreen(appViewModel, onBack = back) }
+                composable(Routes.FAMILY) {
+                    FamilyScreen(appViewModel, onBack = back, navigate = { nav.navigate(it) })
+                }
+                composable(Routes.CHILD_NEW) { entry ->
+                    val askCaregiver = entry.arguments?.getString("askCaregiver") == "1"
+                    ChildEditorScreen(
+                        title = "Add child",
+                        initial = null,
+                        askCaregiverName = askCaregiver,
+                        onBack = back,
+                        onSave = { name, sex, birthDate, caregiverName, photoPath ->
+                            appViewModel.addChild(name, sex, birthDate, caregiverName, photoPath)
+                            back()
+                        },
+                    )
+                }
+                composable(Routes.CHILD_EDIT) { entry ->
+                    val id = entry.arguments?.getString("id")
+                    val profiles by appViewModel.profiles.collectAsStateWithLifecycle()
+                    val child = profiles.orEmpty().find { it.id == id }
+                    if (child == null) {
+                        DetailScreen("Edit child", back) {}
+                    } else {
+                        ChildEditorScreen(
+                            title = "Edit child",
+                            initial = child,
+                            askCaregiverName = false,
+                            onBack = back,
+                            onSave = { name, sex, birthDate, _, photoPath ->
+                                appViewModel.updateChild(child.id, name, sex, birthDate, photoPath)
+                                appViewModel.selectProfile(child.id)
+                                back()
+                            },
+                        )
+                    }
+                }
                 composable(Routes.SETTINGS) { SettingsScreen(onBack = back, navigate = { nav.navigate(it) }) }
                 composable(Routes.UNITS) { UnitsScreen(onBack = back) }
                 composable(Routes.EMAIL) { EmailPasswordScreen(onBack = back) }

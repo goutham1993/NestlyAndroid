@@ -1,6 +1,5 @@
 package com.lifestyle.nestly.ui.components
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.lifestyle.nestly.ui.photo.PhotoImages
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
@@ -72,7 +72,7 @@ fun MonogramAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 56.dp
         val path = photoPath ?: return@LaunchedEffect
         val local = if (File(path).exists()) path else runCatching { photos.resolveProfileToLocal(path) }.getOrNull()
         bitmap = local?.let { file ->
-            withContext(Dispatchers.IO) { BitmapFactory.decodeFile(file)?.asImageBitmap() }
+            withContext(Dispatchers.IO) { PhotoImages.decodeFile(file)?.asImageBitmap() }
         }
     }
     Box(

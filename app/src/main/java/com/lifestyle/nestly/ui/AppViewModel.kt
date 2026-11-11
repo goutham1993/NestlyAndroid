@@ -44,20 +44,8 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     private val _photoPromptSuppressed = MutableStateFlow(false)
     val photoPromptSuppressed: StateFlow<Boolean> = _photoPromptSuppressed.asStateFlow()
 
-    /** Child editor to open after Add Photo. Consumed by the family screen. */
-    private val _photoEditProfileId = MutableStateFlow<String?>(null)
-    val photoEditProfileId: StateFlow<String?> = _photoEditProfileId.asStateFlow()
-
     fun hidePhotoPromptForSession() {
         _photoPromptSuppressed.value = true
-    }
-
-    fun requestPhotoEdit(profileId: String) {
-        _photoEditProfileId.value = profileId
-    }
-
-    fun consumePhotoEdit() {
-        _photoEditProfileId.value = null
     }
 
     fun setFilters(filters: Set<FilterOption>) = viewModelScope.launch { container.preferences.setFilters(filters) }

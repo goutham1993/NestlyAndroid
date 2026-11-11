@@ -41,8 +41,6 @@ import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes
-import com.lifestyle.nestly.ui.activity.AddChildDialog
-import com.lifestyle.nestly.ui.components.ChildPhotoField
 import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.DurationInputDialog
 import com.lifestyle.nestly.ui.components.DetailScreen
@@ -86,20 +84,11 @@ fun AccountTab(navigate: (String) -> Unit) {
 }
 
 @Composable
-fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
+fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit, navigate: (String) -> Unit) {
     val profiles by appViewModel.profiles.collectAsStateWithLifecycle()
     val caregivers by appViewModel.caregivers.collectAsStateWithLifecycle()
     val currentCaregiverId by appViewModel.currentCaregiverId.collectAsStateWithLifecycle()
     val signedIn by appViewModel.signedInCaregiver.collectAsStateWithLifecycle()
-    var addingChild by remember { mutableStateOf(false) }
-    var editingChild by remember { mutableStateOf<ProfileEntity?>(null) }
-    val photoEditId by appViewModel.photoEditProfileId.collectAsStateWithLifecycle()
-    LaunchedEffect(photoEditId, profiles) {
-        val id = photoEditId ?: return@LaunchedEffect
-        val child = profiles.orEmpty().find { it.id == id } ?: return@LaunchedEffect
-        editingChild = child
-        appViewModel.consumePhotoEdit()
-    }
     var addingCaregiver by remember { mutableStateOf(false) }
     var pendingRemoval by remember { mutableStateOf<CaregiverEntity?>(null) }
     var removing by remember { mutableStateOf(false) }
@@ -115,10 +104,15 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                         child.birthDate?.let { Format.age(it) },
                         "Tap to edit",
                     ).joinToString(" · "),
-                    onClick = { editingChild = child },
+                    onClick = { navigate(Routes.childEdit(child.id)) },
                 )
             }
-            MenuRow("Add child", serif = false, chevron = false, onClick = { addingChild = true })
+            MenuRow(
+                "Add child",
+                serif = false,
+                chevron = false,
+                onClick = { navigate(Routes.childNew(caregivers.isEmpty())) },
+            )
             SectionHeading("Caregivers")
             caregivers.forEach { caregiver ->
                 val subtitle = if (caregiver.id == currentCaregiverId) "Your Profile" else "Tap if this is you"
@@ -152,27 +146,6 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                 modifier = Modifier.padding(20.dp),
             )
         }
-    }
-    if (addingChild) {
-        AddChildDialog(
-            askCaregiverName = caregivers.isEmpty(),
-            onDismiss = { addingChild = false },
-            onConfirm = { name, sex, birthDate, caregiverName, photoPath ->
-                appViewModel.addChild(name, sex, birthDate, caregiverName, photoPath)
-                addingChild = false
-            },
-        )
-    }
-    editingChild?.let { child ->
-        EditChildDialog(
-            initial = child,
-            onDismiss = { editingChild = null },
-            onConfirm = { name, sex, birthDate, photoPath ->
-                appViewModel.updateChild(child.id, name, sex, birthDate, photoPath)
-                appViewModel.selectProfile(child.id)
-                editingChild = null
-            },
-        )
     }
     if (addingCaregiver) {
         TextInputDialog(
@@ -309,79 +282,6 @@ private fun InviteSection(appViewModel: AppViewModel) {
     )
     inviteError?.let {
         Text(it, style = NestlyType.Small, color = NestlyColors.Danger, modifier = Modifier.padding(horizontal = 20.dp))
-    }
-}
-
-@Composable
-private fun EditChildDialog(
-    initial: ProfileEntity,
-    onDismiss: () -> Unit,
-    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?, photoPath: String?) -> Unit,
-) {
-    var name by remember { mutableStateOf(initial.name) }
-    var sex by remember { mutableStateOf(initial.sex) }
-    var birthDate by remember { mutableStateOf(initial.birthDate) }
-    var photoPath by remember { mutableStateOf(initial.photoPath) }
-    var pickingDate by remember { mutableStateOf(false) }
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = NestlyColors.AccentText,
-        unfocusedBorderColor = NestlyColors.Divider,
-        cursorColor = NestlyColors.AccentText,
-        focusedLabelColor = NestlyColors.AccentText,
-    )
-    val valid = name.isNotBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = NestlyColors.Surface,
-        title = { Text("Edit child", style = NestlyType.RowLabel) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ChildPhotoField(photoPath) { photoPath = it }
-                OutlinedTextField(
-                    name,
-                    { name = it },
-                    label = { Text("First Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = fieldColors,
-                )
-                SegmentedToggle(
-                    options = listOf("Boy", "Girl"),
-                    selected = when (sex) {
-                        Sex.MALE -> 0
-                        Sex.FEMALE -> 1
-                        else -> -1
-                    },
-                    onSelect = { sex = if (it == 0) Sex.MALE else Sex.FEMALE },
-                )
-                FormRow(
-                    "Birthdate",
-                    value = birthDate?.let(Format::date),
-                    action = if (birthDate == null) "Add" else null,
-                    onClick = { pickingDate = true },
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(name.trim(), sex, birthDate, photoPath) }, enabled = valid) {
-                Text("Save", color = if (valid) NestlyColors.AccentText else NestlyColors.TextMuted)
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = NestlyColors.AccentText) } },
-    )
-
-    if (pickingDate) {
-        val zone = ZoneId.systemDefault()
-        DateTimePickerDialog(
-            initial = (birthDate ?: LocalDate.now()).atStartOfDay(zone).toInstant().toEpochMilli(),
-            dateOnly = true,
-            onDismiss = { pickingDate = false },
-            onConfirm = {
-                birthDate = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-                pickingDate = false
-            },
-        )
     }
 }
 

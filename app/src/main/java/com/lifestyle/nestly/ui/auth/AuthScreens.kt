@@ -33,7 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifestyle.nestly.data.supabase.DataErrors
-import com.lifestyle.nestly.ui.activity.AddChildDialog
+import com.lifestyle.nestly.ui.account.ChildEditorScreen
 import com.lifestyle.nestly.ui.theme.NestlyColors
 import com.lifestyle.nestly.ui.theme.NestlyType
 
@@ -203,6 +203,20 @@ fun OnboardingScreen(authViewModel: AuthViewModel, hasFamily: Boolean) {
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let(authViewModel::importNara) }
 
+    if (addingChild) {
+        ChildEditorScreen(
+            title = "Add child",
+            initial = null,
+            askCaregiverName = false,
+            onBack = { addingChild = false },
+            onSave = { name, sex, birthDate, _, photoPath ->
+                authViewModel.addFirstChild(name, sex, birthDate, caregiverName, photoPath)
+                addingChild = false
+            },
+        )
+        return
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -280,16 +294,5 @@ fun OnboardingScreen(authViewModel: AuthViewModel, hasFamily: Boolean) {
         TextButton(onClick = { authViewModel.signOut() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Sign out", color = NestlyColors.TextSecondary)
         }
-    }
-
-    if (addingChild) {
-        AddChildDialog(
-            askCaregiverName = false,
-            onDismiss = { addingChild = false },
-            onConfirm = { name, sex, birthDate, _, photoPath ->
-                authViewModel.addFirstChild(name, sex, birthDate, caregiverName, photoPath)
-                addingChild = false
-            },
-        )
     }
 }

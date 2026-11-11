@@ -47,8 +47,6 @@ import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes
 import com.lifestyle.nestly.ui.components.BabyAvatar
-import com.lifestyle.nestly.ui.components.ChildPhotoField
-import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
 import com.lifestyle.nestly.ui.components.HeaderIconButton
@@ -87,7 +85,10 @@ fun ActivityTab(
         profiles == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = NestlyColors.Accent)
         }
-        profiles.isNullOrEmpty() -> WelcomeScreen(appViewModel, onImport = { navigate(Routes.IMPORT) })
+        profiles.isNullOrEmpty() -> WelcomeScreen(
+            onImport = { navigate(Routes.IMPORT) },
+            onAddChild = { navigate(Routes.childNew(askCaregiver = true)) },
+        )
         else -> ActivityHome(
             profiles = profiles.orEmpty(),
             dashboard = data,
@@ -117,8 +118,7 @@ fun ActivityTab(
 }
 
 @Composable
-private fun WelcomeScreen(appViewModel: AppViewModel, onImport: () -> Unit) {
-    var adding by remember { mutableStateOf(false) }
+private fun WelcomeScreen(onImport: () -> Unit, onAddChild: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -138,105 +138,8 @@ private fun WelcomeScreen(appViewModel: AppViewModel, onImport: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
-        PillButton("Add Child", onClick = { adding = true }, filled = true, modifier = Modifier.fillMaxWidth())
+        PillButton("Add Child", onClick = onAddChild, filled = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
         PillButton("Import from Nara", onClick = onImport, modifier = Modifier.fillMaxWidth())
-    }
-    if (adding) {
-        AddChildDialog(
-            askCaregiverName = true,
-            onDismiss = { adding = false },
-            onConfirm = { name, sex, birthDate, caregiver, photoPath ->
-                appViewModel.addChild(name, sex, birthDate, caregiver, photoPath)
-                adding = false
-            },
-        )
-    }
-}
-
-@Composable
-fun AddChildDialog(
-    askCaregiverName: Boolean,
-    onDismiss: () -> Unit,
-    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String, photoPath: String?) -> Unit,
-) {
-    var name by remember { mutableStateOf("") }
-    var caregiver by remember { mutableStateOf("") }
-    var sex by remember { mutableStateOf<Sex?>(null) }
-    var birthDate by remember { mutableStateOf<LocalDate?>(null) }
-    var photoPath by remember { mutableStateOf<String?>(null) }
-    var pickingDate by remember { mutableStateOf(false) }
-    val fieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = NestlyColors.AccentText,
-        unfocusedBorderColor = NestlyColors.Divider,
-        cursorColor = NestlyColors.AccentText,
-        focusedLabelColor = NestlyColors.AccentText,
-    )
-    val valid = name.isNotBlank() && (!askCaregiverName || caregiver.isNotBlank())
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = NestlyColors.Surface,
-        title = { Text("Add child", style = NestlyType.RowLabel) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ChildPhotoField(photoPath) { photoPath = it }
-                OutlinedTextField(
-                    name,
-                    { name = it },
-                    label = { Text("First Name") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                    colors = fieldColors,
-                )
-                SegmentedToggle(
-                    options = listOf("Boy", "Girl"),
-                    selected = when (sex) {
-                        Sex.MALE -> 0
-                        Sex.FEMALE -> 1
-                        else -> -1
-                    },
-                    onSelect = { sex = if (it == 0) Sex.MALE else Sex.FEMALE },
-                )
-                FormRow(
-                    "Birthdate",
-                    value = birthDate?.let(Format::date),
-                    action = if (birthDate == null) "Add" else null,
-                    onClick = { pickingDate = true },
-                )
-                if (askCaregiverName) {
-                    OutlinedTextField(
-                        caregiver,
-                        { caregiver = it },
-                        label = { Text("Your Name") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                        colors = fieldColors,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name.trim(), sex, birthDate, caregiver.trim(), photoPath) },
-                enabled = valid,
-            ) {
-                Text("Save", color = if (valid) NestlyColors.AccentText else NestlyColors.TextMuted)
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = NestlyColors.AccentText) } },
-    )
-
-    if (pickingDate) {
-        val zone = ZoneId.systemDefault()
-        DateTimePickerDialog(
-            initial = (birthDate ?: LocalDate.now()).atStartOfDay(zone).toInstant().toEpochMilli(),
-            dateOnly = true,
-            onDismiss = { pickingDate = false },
-            onConfirm = {
-                birthDate = Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
-                pickingDate = false
-            },
-        )
     }
 }

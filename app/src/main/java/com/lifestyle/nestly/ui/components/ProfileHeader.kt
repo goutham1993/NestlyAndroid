@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lifestyle.nestly.ui.theme.NestlyColors
@@ -36,19 +37,37 @@ import com.lifestyle.nestly.ui.theme.NestlyType
 fun BabyAvatar(modifier: Modifier = Modifier) {
     Box(
         modifier
-            .size(80.dp)
+            .size(72.dp)
             .clip(CircleShape)
-            .background(Color(0xFFF4F4F6)),
+            .background(NestlyColors.Accent.copy(alpha = 0.15f)),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            Modifier
-                .size(46.dp)
-                .offset(x = 6.dp, y = 4.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFA9C7E8)),
-        )
-        Icon(Icons.Outlined.ChildCare, null, tint = Color(0xFF2E4A72), modifier = Modifier.size(48.dp))
+        Icon(Icons.Outlined.ChildCare, null, tint = NestlyColors.Accent, modifier = Modifier.size(36.dp))
+    }
+}
+
+/** Letter monogram on a soft accent circle, matching the iOS child avatar. */
+@Composable
+fun MonogramAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 56.dp) {
+    val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString()
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(NestlyColors.Accent.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (initial != null) {
+            Text(
+                initial,
+                color = NestlyColors.Accent,
+                fontSize = (size.value * 0.42f).sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = com.lifestyle.nestly.ui.theme.NestlyRounded,
+            )
+        } else {
+            Icon(Icons.Outlined.ChildCare, null, tint = NestlyColors.Accent, modifier = Modifier.size(size * 0.5f))
+        }
     }
 }
 
@@ -67,14 +86,14 @@ fun ProfileHeader(
             .padding(start = 24.dp, end = 20.dp, top = 16.dp, bottom = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BabyAvatar()
-        Spacer(Modifier.width(18.dp))
+        MonogramAvatar(name, size = 56.dp)
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name, style = NestlyType.Display, color = NestlyColors.TextPrimary, maxLines = 1)
-            if (!ageText.isNullOrBlank()) {
-                Text(ageText, style = NestlyType.Small, color = NestlyColors.TextSecondary, maxLines = 1)
+            val subtitle = listOfNotNull(ageText?.takeIf { it.isNotBlank() }, dateText).joinToString(" · ")
+            if (subtitle.isNotBlank()) {
+                Text(subtitle, style = NestlyType.Small, color = NestlyColors.TextSecondary, maxLines = 1)
             }
-            Text(dateText, style = NestlyType.Small, color = NestlyColors.TextSecondary, maxLines = 1)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically, content = actions)
     }
@@ -85,13 +104,13 @@ fun HeaderIconButton(icon: ImageVector, contentDescription: String, onClick: () 
     Box {
         Box(
             Modifier
-                .size(width = 56.dp, height = 32.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .border(1.dp, NestlyColors.TextMuted, RoundedCornerShape(6.dp))
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(NestlyColors.Accent.copy(alpha = 0.15f))
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icon, contentDescription, tint = NestlyColors.TextPrimary, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription, tint = NestlyColors.Accent, modifier = Modifier.size(22.dp))
         }
         if (badge > 0) {
             Box(
@@ -100,7 +119,7 @@ fun HeaderIconButton(icon: ImageVector, contentDescription: String, onClick: () 
                     .offset(x = 4.dp, y = (-8).dp)
                     .size(18.dp)
                     .clip(CircleShape)
-                    .background(NestlyColors.Badge),
+                    .background(NestlyColors.Accent),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(badge.toString(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)

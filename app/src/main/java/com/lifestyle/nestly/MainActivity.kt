@@ -1,10 +1,8 @@
 package com.lifestyle.nestly
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
@@ -26,10 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pendingEntryKind = WidgetActions.entryKindFrom(intent)
         pendingAppointmentId = intent.getStringExtra(ReminderNotifications.EXTRA_OPEN_APPOINTMENT_ID)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
+        enableEdgeToEdge()
         setContent {
             NestlyTheme {
                 NestlyApp(

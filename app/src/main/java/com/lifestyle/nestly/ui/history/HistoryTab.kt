@@ -237,13 +237,13 @@ private fun WeekStrip(
                     Text(
                         day.date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault()).take(2),
                         style = NestlyType.Small.copy(fontWeight = FontWeight.Medium),
-                        color = NestlyColors.TextPrimary,
+                        color = if (isSelected) androidx.compose.ui.graphics.Color.White else NestlyColors.TextSecondary,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
                         day.date.dayOfMonth.toString(),
                         style = NestlyType.BodyMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-                        color = NestlyColors.TextPrimary,
+                        color = if (isSelected) androidx.compose.ui.graphics.Color.White else NestlyColors.TextPrimary,
                     )
                 }
             }
@@ -363,14 +363,14 @@ private fun TimelineGrid(
                         .offset(x = columnWidth * todayIndex, y = y)
                         .width(columnWidth)
                         .height(2.dp)
-                        .background(androidx.compose.ui.graphics.Color.White),
+                        .background(NestlyColors.Accent),
                 )
                 Box(
                     Modifier
                         .offset(x = columnWidth * (todayIndex + 1) - 5.dp, y = y - 4.dp)
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(androidx.compose.ui.graphics.Color.White),
+                        .background(NestlyColors.Accent),
                 )
             }
         }

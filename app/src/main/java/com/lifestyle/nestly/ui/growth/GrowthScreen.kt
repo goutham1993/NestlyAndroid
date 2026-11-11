@@ -370,6 +370,11 @@ private fun GrowthChart(
     Column(modifier.padding(horizontal = 12.dp)) {
         val textMeasurer = rememberTextMeasurer()
         val axisStyle = TextStyle(color = NestlyColors.TextSecondary, fontSize = 11.sp)
+        val gridColor = NestlyColors.Divider.copy(alpha = 0.5f)
+        val curveLabel = NestlyColors.TextPrimary
+        val lineColor = NestlyColors.Accent
+        val selectedFill = NestlyColors.Surface
+        val selectedRing = NestlyColors.AccentText
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -404,7 +409,7 @@ private fun GrowthChart(
 
             // Gridlines + y axis labels.
             yTicks.forEach { tick ->
-                drawLine(NestlyColors.Divider.copy(alpha = 0.5f), Offset(left, y(tick)), Offset(right, y(tick)), 1f)
+                drawLine(gridColor, Offset(left, y(tick)), Offset(right, y(tick)), 1f)
                 val label = Format.number(tick, if (tick % 1.0 == 0.0) 0 else 1)
                 val measured = textMeasurer.measure(label, axisStyle)
                 drawText(
@@ -447,11 +452,11 @@ private fun GrowthChart(
                     )
                     val lastValue = curveValues.last().second[index]
                     val label = "${percentile.toInt()}%"
-                    val measured = textMeasurer.measure(label, axisStyle.copy(color = NestlyColors.TextPrimary))
+                    val measured = textMeasurer.measure(label, axisStyle.copy(color = curveLabel))
                     drawText(
                         textMeasurer, label,
                         topLeft = Offset(right + 5.dp.toPx(), y(toDisplay(lastValue)) - measured.size.height / 2f),
-                        style = axisStyle.copy(color = NestlyColors.TextPrimary),
+                        style = axisStyle.copy(color = curveLabel),
                     )
                 }
             }
@@ -463,14 +468,14 @@ private fun GrowthChart(
                 val py = y(toDisplay(point.value))
                 if (i == 0) line.moveTo(px, py) else line.lineTo(px, py)
             }
-            if (plotted.size > 1) drawPath(line, NestlyColors.Accent, style = Stroke(width = 2.dp.toPx()))
+            if (plotted.size > 1) drawPath(line, lineColor, style = Stroke(width = 2.dp.toPx()))
             plotted.forEach { point ->
                 val center = Offset(x(point.ageMonths!!), y(toDisplay(point.value)))
                 if (point.entry.id == shownSelected?.entry?.id) {
-                    drawCircle(NestlyColors.Surface, radius = 9.dp.toPx(), center = center)
-                    drawCircle(NestlyColors.AccentText, radius = 9.dp.toPx(), center = center, style = Stroke(width = 2.5.dp.toPx()))
+                    drawCircle(selectedFill, radius = 9.dp.toPx(), center = center)
+                    drawCircle(selectedRing, radius = 9.dp.toPx(), center = center, style = Stroke(width = 2.5.dp.toPx()))
                 } else {
-                    drawCircle(NestlyColors.Accent, radius = 5.dp.toPx(), center = center)
+                    drawCircle(lineColor, radius = 5.dp.toPx(), center = center)
                 }
             }
         }

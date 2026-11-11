@@ -5,10 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -35,7 +37,7 @@ import com.lifestyle.nestly.ui.theme.NestlyType
 
 private val SheetShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
 
-/** Full-height bottom sheet with Nara's colored header: X, serif title, and Save. */
+/** Full-height sheet with a plain toolbar: Close, title, and Save. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EntrySheet(
@@ -53,7 +55,7 @@ fun EntrySheet(
         modifier = Modifier.statusBarsPadding(),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = SheetShape,
-        containerColor = NestlyColors.Surface,
+        containerColor = NestlyColors.Background,
         dragHandle = null,
         contentWindowInsets = { androidx.compose.foundation.layout.WindowInsets(0) },
     ) {
@@ -94,27 +96,40 @@ fun SheetHeader(
     saveEnabled: Boolean = true,
     saveLabel: String = "Save",
 ) {
-    val fg = if (color == Color.Transparent) NestlyColors.TextPrimary else NestlyColors.HeaderText
-    Box(
+    Row(
         Modifier
             .fillMaxWidth()
-            .background(color)
-            .height(80.dp),
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterStart).padding(start = 6.dp)) {
-            Icon(Icons.Outlined.Close, contentDescription = "Close", tint = fg)
-        }
-        Text(title, style = NestlyType.SheetTitle, color = fg, modifier = Modifier.align(Alignment.Center))
+        Text(
+            "Close",
+            style = NestlyType.Body,
+            color = NestlyColors.Accent,
+            modifier = Modifier
+                .clickable(onClick = onClose)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+        )
+        Text(
+            title,
+            style = NestlyType.SheetTitle,
+            color = NestlyColors.TextPrimary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            maxLines = 1,
+            modifier = Modifier.weight(1f),
+        )
         if (onSave != null) {
             Text(
                 saveLabel,
-                style = NestlyType.BodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = fg.copy(alpha = if (saveEnabled) 1f else 0.4f),
+                style = NestlyType.Button,
+                color = NestlyColors.Accent.copy(alpha = if (saveEnabled) 1f else 0.4f),
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
                     .clickable(enabled = saveEnabled, onClick = onSave)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
             )
+        } else {
+            Spacer(Modifier.width(64.dp))
         }
     }
 }

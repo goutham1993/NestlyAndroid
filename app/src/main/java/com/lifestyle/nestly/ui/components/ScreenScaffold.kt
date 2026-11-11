@@ -53,24 +53,23 @@ fun DetailScreen(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(NestlyColors.Surface)
-                .heightIn(min = 64.dp),
+                .heightIn(min = 52.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = NestlyColors.TextPrimary)
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = NestlyColors.Accent)
             }
             Text(
                 title,
-                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+                style = NestlyType.SheetTitle,
                 color = NestlyColors.TextPrimary,
                 modifier = Modifier.weight(1f),
             )
             if (action != null && onAction != null) {
                 Text(
                     action,
-                    style = NestlyType.BodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = NestlyColors.TextPrimary,
+                    style = NestlyType.Button,
+                    color = NestlyColors.Accent,
                     modifier = Modifier
                         .clickable(onClick = onAction)
                         .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -97,9 +96,9 @@ fun MenuRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
+                .heightIn(min = 52.dp)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -113,7 +112,7 @@ fun MenuRow(
             if (value != null) Text(value, style = NestlyType.Body, color = NestlyColors.TextPrimary)
             if (chevron && onClick != null) {
                 Spacer(Modifier.width(6.dp))
-                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = NestlyColors.TextPrimary, modifier = Modifier.size(22.dp))
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = NestlyColors.TextMuted, modifier = Modifier.size(18.dp))
             }
         }
         RowDivider()
@@ -125,9 +124,8 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 36.dp, bottom = 16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 28.dp, bottom = 8.dp),
     ) {
-        Text(text, style = NestlyType.SectionTitle, color = NestlyColors.TextPrimary)
+        Text(text, style = NestlyType.Small.copy(fontWeight = FontWeight.SemiBold), color = NestlyColors.TextSecondary)
     }
-    RowDivider()
 }

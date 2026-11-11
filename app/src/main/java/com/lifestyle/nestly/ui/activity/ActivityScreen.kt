@@ -78,123 +78,40 @@ fun ActivityTab(
     val timers by viewModel.timers.collectAsStateWithLifecycle()
     val feedIntervalMinutes by viewModel.feedIntervalMinutes.collectAsStateWithLifecycle()
 
+    val filters by appViewModel.filters.collectAsStateWithLifecycle()
+
     var showSummary by remember { mutableStateOf(false) }
-    var showFeedPicker by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
 
     when {
         profiles == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = NestlyColors.AccentText)
+            CircularProgressIndicator(color = NestlyColors.Accent)
         }
         profiles.isNullOrEmpty() -> WelcomeScreen(appViewModel, onImport = { navigate(Routes.IMPORT) })
-        else -> {
-            val dashboard = data
-            LazyColumn(
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                item {
-                    ProfileHeader(
-                        name = dashboard?.profile?.name.orEmpty(),
-                        dateText = Format.headerDate(now),
-                        ageText = dashboard?.profile?.birthDate?.let { birthDate ->
-                            Format.age(birthDate, Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate())
-                        },
-                    ) {
-                        HeaderIconButton(Icons.Outlined.Subject, "Summary", onClick = { showSummary = true })
-                        Box {
-                            HeaderIconButton(Icons.Outlined.MoreHoriz, "More", onClick = { showMenu = true })
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                containerColor = NestlyColors.Surface,
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Set Reminders", style = NestlyType.RowLabel) },
-                                    leadingIcon = { Icon(Icons.Outlined.Alarm, null, tint = NestlyColors.TextPrimary) },
-                                    onClick = {
-                                        showMenu = false
-                                        navigate(Routes.REMINDERS)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Doctor Appointments", style = NestlyType.RowLabel) },
-                                    leadingIcon = { Icon(Icons.Outlined.CalendarMonth, null, tint = NestlyColors.TextPrimary) },
-                                    onClick = {
-                                        showMenu = false
-                                        navigate(Routes.APPOINTMENTS)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Notes", style = NestlyType.RowLabel) },
-                                    leadingIcon = { Icon(Icons.Outlined.EditNote, null, tint = NestlyColors.TextPrimary) },
-                                    onClick = {
-                                        showMenu = false
-                                        navigate(Routes.NOTES)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Edit Activities", style = NestlyType.RowLabel) },
-                                    leadingIcon = { Icon(Icons.Outlined.Edit, null, tint = NestlyColors.TextPrimary) },
-                                    onClick = {
-                                        showMenu = false
-                                        navigate(Routes.EDIT_ACTIVITIES)
-                                    },
-                                )
-                            }
-                        }
-                    }
-                }
-                if (dashboard != null) {
-                    val ctx = CardContext(
-                        data = dashboard,
-                        now = now,
-                        startOfToday = viewModel.startOfDay(now),
-                        layout = layout,
-                        timers = timers,
-                        feedIntervalMinutes = feedIntervalMinutes,
-                        onOpenEntry = onOpenEntry,
-                        onFeedPicker = { showFeedPicker = true },
-                        onShowHistory = onShowHistory,
-                        onMilestones = { navigate(Routes.MILESTONES) },
-                        onGrowth = { metric -> navigate(Routes.growth(metric)) },
-                        onVaccinations = { navigate(Routes.VACCINATIONS) },
-                    )
-                    items(layout.order.filter(layout::isCardVisible), key = { it.name }) { card ->
-                        DashboardCardFor(card, ctx)
-                    }
-                }
-                item {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 32.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        PillButton("Edit Activities", onClick = { navigate(Routes.EDIT_ACTIVITIES) }, filled = true)
-                    }
-                }
-            }
-        }
+        else -> ActivityHome(
+            profiles = profiles.orEmpty(),
+            dashboard = data,
+            now = now,
+            layout = layout,
+            timers = timers,
+            feedIntervalMinutes = feedIntervalMinutes,
+            filters = filters,
+            startOfToday = viewModel.startOfDay(now),
+            onOpenEntry = onOpenEntry,
+            onShowHistory = onShowHistory,
+            onMilestones = { navigate(Routes.MILESTONES) },
+            onGrowth = { navigate(Routes.growth(it)) },
+            onVaccinations = { navigate(Routes.VACCINATIONS) },
+            onReminders = { navigate(Routes.REMINDERS) },
+            onAppointments = { navigate(Routes.APPOINTMENTS) },
+            onNotes = { navigate(Routes.NOTES) },
+            onEditActivities = { navigate(Routes.EDIT_ACTIVITIES) },
+            onSelectProfile = appViewModel::selectProfile,
+            onShowSummary = { showSummary = true },
+        )
     }
 
     if (showSummary) {
         data?.let { SummarySheet(it.recent, now, viewModel.startOfDay(now), onDismiss = { showSummary = false }) }
-    }
-    if (showFeedPicker) {
-        val options = buildList {
-            if (layout.isEnabled(ActivityToggle.BREASTFEEDING)) add(EntryKind.BREASTFEED)
-            if (layout.isEnabled(ActivityToggle.BOTTLE_FEEDING)) add(EntryKind.BOTTLE)
-            if (layout.isEnabled(ActivityToggle.SOLID_FEEDING)) add(EntryKind.SOLIDS)
-            if (layout.isEnabled(ActivityToggle.COMBO_FEEDING)) add(EntryKind.COMBO)
-            add(EntryKind.VITAMIN_D)
-        }
-        FeedTypePicker(options, onDismiss = { showFeedPicker = false }) { kind ->
-            showFeedPicker = false
-            onOpenEntry(EntryRequest.New(kind))
-        }
     }
 }
 
@@ -220,9 +137,9 @@ private fun WelcomeScreen(appViewModel: AppViewModel, onImport: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(32.dp))
-        PillButton("Add Child", onClick = { adding = true })
-        Spacer(Modifier.height(16.dp))
-        PillButton("Import from Nara", onClick = onImport, filled = true)
+        PillButton("Add Child", onClick = { adding = true }, filled = true, modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(12.dp))
+        PillButton("Import from Nara", onClick = onImport, modifier = Modifier.fillMaxWidth())
     }
     if (adding) {
         AddChildDialog(

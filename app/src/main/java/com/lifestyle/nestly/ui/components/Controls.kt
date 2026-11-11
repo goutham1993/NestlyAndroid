@@ -1,6 +1,5 @@
 package com.lifestyle.nestly.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,9 +60,10 @@ fun FormRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
+                .heightIn(min = 52.dp)
+                .background(NestlyColors.Surface)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = NestlyType.RowLabel, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
@@ -97,8 +97,9 @@ fun SplitValueFormRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
-                .padding(horizontal = 20.dp),
+                .heightIn(min = 52.dp)
+                .background(NestlyColors.Surface)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = NestlyType.RowLabel, color = NestlyColors.TextPrimary, modifier = Modifier.weight(1f))
@@ -135,8 +136,9 @@ fun SwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Uni
         Row(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
-                .padding(horizontal = 20.dp),
+                .heightIn(min = 52.dp)
+                .background(NestlyColors.Surface)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(label, style = NestlyType.RowLabel, modifier = Modifier.weight(1f))
@@ -167,8 +169,9 @@ fun NotesField(value: String, onValueChange: (String) -> Unit, modifier: Modifie
         Box(
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 82.dp)
-                .padding(horizontal = 20.dp, vertical = 26.dp),
+                .heightIn(min = 52.dp)
+                .background(NestlyColors.Surface)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
         ) {
             BasicTextField(
                 value = value,
@@ -192,16 +195,16 @@ fun CircleToggle(label: String, selected: Boolean, onClick: () -> Unit, modifier
     Box(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .background(if (selected) NestlyColors.Accent else Color.Transparent)
-            .border(1.5.dp, NestlyColors.Accent, CircleShape)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) NestlyColors.Accent.copy(alpha = 0.16f) else NestlyColors.Tertiary)
+            .border(1.dp, if (selected) NestlyColors.Accent.copy(alpha = 0.5f) else Color.Transparent, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
             style = NestlyType.BodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (selected) Color.White else NestlyColors.AccentText,
+            color = if (selected) NestlyColors.Accent else NestlyColors.TextPrimary,
             textAlign = TextAlign.Center,
         )
     }
@@ -214,7 +217,7 @@ fun SegmentedToggle(options: List<String>, selected: Int, onSelect: (Int) -> Uni
             .fillMaxWidth()
             .height(44.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(NestlyColors.Background)
+            .background(NestlyColors.Tertiary)
             .padding(3.dp),
     ) {
         options.forEachIndexed { index, option ->
@@ -224,7 +227,7 @@ fun SegmentedToggle(options: List<String>, selected: Int, onSelect: (Int) -> Uni
                     .fillMaxWidth()
                     .height(38.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (index == selected) NestlyColors.SegmentSelected else Color.Transparent)
+                    .background(if (index == selected) NestlyColors.Surface else Color.Transparent)
                     .clickable { onSelect(index) },
                 contentAlignment = Alignment.Center,
             ) {
@@ -234,7 +237,7 @@ fun SegmentedToggle(options: List<String>, selected: Int, onSelect: (Int) -> Uni
     }
 }
 
-/** White outlined pill, e.g. "Start Timer", "Add Photo", "Yes". */
+/** Filled accent action, or a tinted secondary action. [compact] keeps it hug-content for toolbars. */
 @Composable
 fun PillButton(
     text: String,
@@ -243,17 +246,19 @@ fun PillButton(
     filled: Boolean = false,
     compact: Boolean = false,
 ) {
-    val shape = RoundedCornerShape(50)
+    val shape = RoundedCornerShape(if (compact) 20.dp else 16.dp)
+    val background = if (filled) NestlyColors.Accent else NestlyColors.Accent.copy(alpha = 0.12f)
+    val foreground = if (filled) Color.White else NestlyColors.Accent
     Box(
         modifier
             .clip(shape)
-            .background(if (filled) NestlyColors.SurfaceRaised else Color.Transparent)
-            .border(BorderStroke(1.5.dp, if (filled) NestlyColors.Divider else Color.White), shape)
+            .background(background)
             .clickable(onClick = onClick)
-            .padding(horizontal = if (compact) 14.dp else 30.dp, vertical = if (compact) 6.dp else 14.dp),
+            .padding(horizontal = if (compact) 14.dp else 20.dp, vertical = if (compact) 8.dp else 14.dp)
+            .then(if (compact) Modifier else Modifier.heightIn(min = 24.dp)),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = NestlyType.Button, color = NestlyColors.TextPrimary)
+        Text(text, style = if (compact) NestlyType.Small.copy(fontWeight = FontWeight.SemiBold) else NestlyType.Button, color = foreground)
     }
 }
 

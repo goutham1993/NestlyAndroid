@@ -40,19 +40,19 @@ import kotlin.math.roundToLong
 val TrendSeries.color: Color
     get() = when (this) {
         TrendSeries.FEED, TrendSeries.BOTTLE, TrendSeries.BREAST_MILK -> Color(0xFFF7A93B)
-        TrendSeries.BREASTFEED -> NestlyColors.Feed
+        TrendSeries.BREASTFEED -> Color(0xFFD9884F)
         TrendSeries.COMBO -> Color(0xFFE5862F)
         TrendSeries.SOLIDS -> Color(0xFFD9C36A)
         TrendSeries.FORMULA -> Color(0xFFFFE29A)
-        TrendSeries.OTHER_MILK -> NestlyColors.TextMuted
-        TrendSeries.PUMP -> NestlyColors.PumpBlob
+        TrendSeries.OTHER_MILK -> Color(0xFF8E8E93)
+        TrendSeries.PUMP -> Color(0xFF8E76C4)
         TrendSeries.WET -> Color(0xFFE9DC9A)
         TrendSeries.DIRTY -> Color(0xFFB98D5E)
-        TrendSeries.MIXED_DIAPER -> NestlyColors.DiaperBlob
-        TrendSeries.DRY -> NestlyColors.TextMuted
-        TrendSeries.SLEEP -> NestlyColors.SleepBlob
-        TrendSeries.NAP -> NestlyColors.Sleep
-        TrendSeries.AWAKE -> NestlyColors.Feed
+        TrendSeries.MIXED_DIAPER -> Color(0xFF4A93BB)
+        TrendSeries.DRY -> Color(0xFF8E8E93)
+        TrendSeries.SLEEP -> Color(0xFF5A68AE)
+        TrendSeries.NAP -> Color(0xFF8B97D8)
+        TrendSeries.AWAKE -> Color(0xFFD9884F)
     }
 
 /** "6.5", "150 mL", "3h 30m". */

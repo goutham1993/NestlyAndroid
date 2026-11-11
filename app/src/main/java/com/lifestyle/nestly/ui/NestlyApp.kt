@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ShowChart
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Flare
-import androidx.compose.material.icons.outlined.VolunteerActivism
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -101,10 +101,10 @@ object Routes {
 }
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    ACTIVITY("Activity", Icons.Outlined.Flare),
+    ACTIVITY("Activity", Icons.Outlined.GridView),
     HISTORY("History", Icons.Outlined.CalendarMonth),
     TRENDS("Trends", Icons.AutoMirrored.Outlined.ShowChart),
-    ACCOUNT("Account", Icons.Outlined.VolunteerActivism),
+    ACCOUNT("Account", Icons.Outlined.AccountCircle),
 }
 
 @Composable
@@ -302,7 +302,7 @@ private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Tab.entries.forEach { tab ->
-                val color = if (tab == selected) NestlyColors.AccentText else NestlyColors.TextSecondary
+                val color = if (tab == selected) NestlyColors.Accent else NestlyColors.TextMuted
                 Column(
                     Modifier
                         .weight(1f)
@@ -313,8 +313,8 @@ private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
                         .padding(vertical = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(tab.icon, tab.label, tint = color, modifier = Modifier.size(28.dp))
-                    Text(tab.label, color = color, fontSize = 12.sp)
+                    Icon(tab.icon, tab.label, tint = color, modifier = Modifier.size(24.dp))
+                    Text(tab.label, color = color, fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
                 }
             }
         }

@@ -54,7 +54,7 @@ class NestlyDreamService : DreamService() {
         val composeView = ComposeView(this).apply {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
-                NestlyTheme {
+                NestlyTheme(darkTheme = true) {
                     NightstandScreen(
                         viewModel = viewModel,
                         onLogFeed = { quickLog.save() },

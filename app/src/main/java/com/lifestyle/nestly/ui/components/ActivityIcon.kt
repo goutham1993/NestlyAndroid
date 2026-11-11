@@ -48,12 +48,15 @@ fun ActivityIcon(
     kind: IconKind,
     modifier: Modifier = Modifier,
     size: Dp = 56.dp,
-    blob: Color = kind.card.blobColor,
+    blob: Color = Color.Unspecified,
     line: Color = Color.White,
 ) {
+    val blobColor = if (blob == Color.Unspecified) kind.card.blobColor else blob
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
-        drawBlob(blob, center = Offset(s * 0.56f, s * 0.6f), radius = s * 0.3f, seed = kind.ordinal)
+        if (blobColor.alpha > 0f) {
+            drawBlob(blobColor, center = Offset(s * 0.56f, s * 0.6f), radius = s * 0.3f, seed = kind.ordinal)
+        }
         val stroke = Stroke(width = s * 0.045f, cap = StrokeCap.Round, join = StrokeJoin.Round)
         when (kind) {
             IconKind.BOTTLE -> drawBottle(s, line, stroke)

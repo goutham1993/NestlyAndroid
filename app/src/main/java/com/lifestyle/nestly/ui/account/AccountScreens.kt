@@ -67,8 +67,7 @@ fun AccountTab(navigate: (String) -> Unit) {
             .statusBarsPadding()
             .verticalScroll(rememberScrollState()),
     ) {
-        Text("Account", style = NestlyType.Display, modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 20.dp))
-        RowDivider()
+        Text("Account", style = NestlyType.Display, modifier = Modifier.padding(start = 20.dp, top = 12.dp, bottom = 8.dp))
         MenuRow("Family", onClick = { navigate(Routes.FAMILY) })
         MenuRow("Settings", onClick = { navigate(Routes.SETTINGS) })
         MenuRow("Subscription", onClick = { navigate(Routes.SUBSCRIPTION) })

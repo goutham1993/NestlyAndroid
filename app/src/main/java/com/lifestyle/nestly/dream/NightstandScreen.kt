@@ -57,8 +57,8 @@ import kotlinx.coroutines.launch
 
 /** Near-black so an OLED nightstand stays dark; [NestlyColors.Background] is too bright at 3am. */
 private val NightBackground = Color(0xFF0B0C12)
-private val NightDim = NestlyColors.TextSecondary.copy(alpha = 0.85f)
-private val NightFaint = NestlyColors.TextMuted.copy(alpha = 0.9f)
+private val NightDim = Color(0xFF98989F)
+private val NightFaint = Color(0xFF636366)
 
 /** True red for overdue — must read as "late" from across the room, even half-asleep. */
 private val NightOverdue = Color(0xFFFF5147)

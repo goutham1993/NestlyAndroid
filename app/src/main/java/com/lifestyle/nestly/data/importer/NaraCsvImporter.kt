@@ -80,6 +80,8 @@ class NaraCsvImporter(
                 createdAt = matched?.createdAt ?: now,
                 updatedAt = now,
                 version = matched?.version ?: 1,
+                photoPath = matched?.photoPath,
+                photoUpdatedAt = matched?.photoUpdatedAt,
             )
             family.importProfile(merged)
             if (matched == null) knownProfiles += merged

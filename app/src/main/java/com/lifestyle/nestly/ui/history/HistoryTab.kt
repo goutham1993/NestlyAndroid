@@ -99,6 +99,7 @@ fun HistoryTab(
         val zone = remember { ZoneId.systemDefault() }
         ProfileHeader(
             name = history?.profile?.name ?: "Nestly",
+            photoPath = history?.profile?.photoPath,
             // Match the reference: the date under the name is the selected day, not today.
             dateText = history?.selected?.let {
                 Format.headerDate(it.atStartOfDay(zone).toInstant().toEpochMilli(), zone)

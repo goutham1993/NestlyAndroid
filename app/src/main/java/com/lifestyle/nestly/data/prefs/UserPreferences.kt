@@ -5,8 +5,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import com.lifestyle.nestly.data.reminder.ReminderLogic
+import com.lifestyle.nestly.data.model.ReminderKind
 import androidx.datastore.preferences.preferencesDataStore
 import com.lifestyle.nestly.data.units.LengthUnit
 import com.lifestyle.nestly.data.units.TempUnit
@@ -77,6 +80,23 @@ class UserPreferences(context: Context) {
     /** Default bottle amount (in mL) used to pre-fill new bottle/combo feeds, or null if unset. */
     val defaultBottleMl: Flow<Double?> = store.data.map { it[DEFAULT_BOTTLE_ML] }
 
+    /**
+     * Hours between feeds used by the next-feed countdown and new feed reminders.
+     * Starts at 3 hours until the user picks something else.
+     */
+    val defaultFeedIntervalMinutes: Flow<Int> = store.data.map { prefs ->
+        prefs[DEFAULT_FEED_INTERVAL]?.takeIf { it > 0 }
+            ?: ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED)
+    }
+
+    /** Milestone ids this device already skipped, keyed by child id. */
+    val dismissedPhotoPrompts: Flow<Map<String, String>> = store.data.map { prefs ->
+        prefs[PHOTO_PROMPTS].orEmpty().mapNotNull { entry ->
+            val parts = entry.split("|", limit = 2)
+            if (parts.size == 2) parts[0] to parts[1] else null
+        }.toMap()
+    }
+
     val filters: Flow<Set<FilterOption>> = store.data.map { prefs ->
         prefs[FILTERS].orEmpty().mapNotNull { name -> FilterOption.entries.find { it.name == name } }.toSet()
     }
@@ -107,6 +127,16 @@ class UserPreferences(context: Context) {
         if (ml == null) prefs.remove(DEFAULT_BOTTLE_ML) else prefs[DEFAULT_BOTTLE_ML] = ml
     }
 
+    suspend fun setDefaultFeedIntervalMinutes(minutes: Int) = store.edit { prefs ->
+        prefs[DEFAULT_FEED_INTERVAL] = minutes.coerceAtLeast(1)
+    }
+
+    /** Not Now hides this age on this device until the next milestone. */
+    suspend fun dismissPhotoPrompt(profileId: String, milestoneId: String) = store.edit { prefs ->
+        val kept = prefs[PHOTO_PROMPTS].orEmpty().filterNot { it.startsWith("$profileId|") }
+        prefs[PHOTO_PROMPTS] = (kept + "$profileId|$milestoneId").toSet()
+    }
+
     suspend fun setUnits(units: UnitPrefs) = store.edit { prefs ->
         prefs[VOLUME_UNIT] = units.volume.name
         prefs[WEIGHT_UNIT] = units.weight.name
@@ -125,5 +155,7 @@ class UserPreferences(context: Context) {
         val LENGTH_UNIT = stringPreferencesKey("length_unit")
         val TEMP_UNIT = stringPreferencesKey("temp_unit")
         val DEFAULT_BOTTLE_ML = doublePreferencesKey("default_bottle_ml")
+        val DEFAULT_FEED_INTERVAL = intPreferencesKey("default_feed_interval_minutes")
+        val PHOTO_PROMPTS = stringSetPreferencesKey("photo_prompt_dismissed")
     }
 }

@@ -131,14 +131,14 @@ class NightstandViewModel(
                 )
             }
         }
-        return combine(inner, now) { raw, nowMs ->
+        return combine(inner, now, container.preferences.defaultFeedIntervalMinutes) { raw, nowMs, defaultInterval ->
             val startOfToday = startOfDay(nowMs)
             val todayFeeds = raw.recent.filter {
                 it.deletedAt == null && it.type in feedTypes &&
                     it.startTime >= startOfToday && it.startTime <= nowMs + 60_000L
             }
             val interval = raw.reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes
-                ?: ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED)
+                ?: defaultInterval
             NightstandState(
                 profileName = profile.name,
                 lastFeed = raw.lastFeed,

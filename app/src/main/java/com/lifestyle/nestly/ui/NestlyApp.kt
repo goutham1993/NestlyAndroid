@@ -60,6 +60,7 @@ import com.lifestyle.nestly.ui.appointments.AppointmentDetailScreen
 import com.lifestyle.nestly.ui.appointments.AppointmentsScreen
 import com.lifestyle.nestly.ui.milestones.MilestonesScreen
 import com.lifestyle.nestly.ui.notes.NoteDetailScreen
+import com.lifestyle.nestly.ui.photo.PhotoPromptHost
 import com.lifestyle.nestly.ui.notes.NotesScreen
 import com.lifestyle.nestly.ui.history.HistoryTab
 import com.lifestyle.nestly.ui.reminders.RemindersScreen
@@ -262,6 +263,7 @@ private fun MainTabs(appViewModel: AppViewModel, openEntry: (EntryRequest) -> Un
     var tabName by rememberSaveable { mutableStateOf(Tab.ACTIVITY.name) }
     val tab = Tab.entries.find { it.name == tabName } ?: Tab.ACTIVITY
     val selectTab: (Tab) -> Unit = { tabName = it.name }
+    PhotoPromptHost(appViewModel, navigate)
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
             when (tab) {

@@ -85,6 +85,8 @@ data class ProfileDto(
     @SerialName("updated_at") val updatedAt: String,
     @SerialName("deleted_at") val deletedAt: String? = null,
     val version: Int = 1,
+    @SerialName("photo_path") val photoPath: String? = null,
+    @SerialName("photo_updated_at") val photoUpdatedAt: String? = null,
 ) {
     fun toEntity() = ProfileEntity(
         id, familyId, name,
@@ -92,12 +94,16 @@ data class ProfileDto(
         adjustedBirthDate?.let(LocalDate::parse),
         sex, profileType,
         createdAt.isoToMillis(), updatedAt.isoToMillis(), deletedAt?.isoToMillis(), version,
+        photoPath = photoPath,
+        photoUpdatedAt = photoUpdatedAt?.isoToMillis(),
     )
 }
 
 fun ProfileEntity.toDto() = ProfileDto(
     id, familyId, name, birthDate?.toString(), adjustedBirthDate?.toString(), sex, profileType,
     createdAt.toIso(), updatedAt.toIso(), deletedAt?.toIso(), version,
+    photoPath = photoPath,
+    photoUpdatedAt = photoUpdatedAt?.toIso(),
 )
 
 @Serializable

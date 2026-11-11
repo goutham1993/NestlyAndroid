@@ -187,7 +187,7 @@ private fun HomeHeader(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MonogramAvatar(profile.name, size = 56.dp)
+        MonogramAvatar(profile.name, size = 56.dp, photoPath = profile.photoPath)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             if (profiles.size > 1) {

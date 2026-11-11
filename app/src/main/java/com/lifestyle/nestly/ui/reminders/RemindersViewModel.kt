@@ -42,6 +42,7 @@ class RemindersViewModel(private val container: AppContainer) : ViewModel() {
 
     fun setInterval(kind: ReminderKind, minutes: Int) = viewModelScope.launch {
         val profile = container.family.selectedProfile.first() ?: return@launch
+        if (kind == ReminderKind.FEED) container.preferences.setDefaultFeedIntervalMinutes(minutes)
         val saved = container.reminders.setInterval(kind, profile.familyId, profile.id, minutes)
         if (saved.enabled) container.scheduler.schedule(saved)
     }

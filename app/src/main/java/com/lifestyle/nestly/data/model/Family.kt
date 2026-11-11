@@ -56,4 +56,8 @@ data class ProfileEntity(
     val updatedAt: Long,
     val deletedAt: Long? = null,
     val version: Int = 1,
+    /** Storage path in the profile-photos bucket, or null when the child has no shared photo. */
+    val photoPath: String? = null,
+    /** When the shared photo was last saved. Drives the age photo prompt. */
+    val photoUpdatedAt: Long? = null,
 )

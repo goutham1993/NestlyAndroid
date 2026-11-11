@@ -57,6 +57,7 @@ fun TrendsTab(appViewModel: AppViewModel, navigate: (String) -> Unit) {
             name = data?.profile?.name ?: profile?.name ?: "Nestly",
             dateText = Format.headerDate(System.currentTimeMillis()),
             ageText = (data?.profile ?: profile)?.birthDate?.let { Format.age(it) },
+            photoPath = (data?.profile ?: profile)?.photoPath,
         ) {
             WindowChips(data?.window ?: TrendsWindow.SEVEN, onSelect = viewModel::setWindow)
         }

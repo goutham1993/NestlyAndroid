@@ -7,8 +7,10 @@ import com.lifestyle.nestly.data.model.CaregiverEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.data.prefs.FilterOption
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -38,19 +40,41 @@ class AppViewModel(private val container: AppContainer) : ViewModel() {
     val filters: StateFlow<Set<FilterOption>> = container.preferences.filters
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
+    /** Add Photo hides the age prompt until the next launch, without counting as Not Now. */
+    private val _photoPromptSuppressed = MutableStateFlow(false)
+    val photoPromptSuppressed: StateFlow<Boolean> = _photoPromptSuppressed.asStateFlow()
+
+    /** Child editor to open after Add Photo. Consumed by the family screen. */
+    private val _photoEditProfileId = MutableStateFlow<String?>(null)
+    val photoEditProfileId: StateFlow<String?> = _photoEditProfileId.asStateFlow()
+
+    fun hidePhotoPromptForSession() {
+        _photoPromptSuppressed.value = true
+    }
+
+    fun requestPhotoEdit(profileId: String) {
+        _photoEditProfileId.value = profileId
+    }
+
+    fun consumePhotoEdit() {
+        _photoEditProfileId.value = null
+    }
+
     fun setFilters(filters: Set<FilterOption>) = viewModelScope.launch { container.preferences.setFilters(filters) }
 
     fun selectCaregiver(id: String) = viewModelScope.launch { family.selectCaregiver(id) }
 
     fun selectProfile(id: String) = viewModelScope.launch { family.selectProfile(id) }
 
-    fun addChild(name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String) = viewModelScope.launch {
-        family.addChild(name, sex, birthDate, caregiverName)
-    }
+    fun addChild(name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String, photoPath: String? = null) =
+        viewModelScope.launch {
+            family.addChild(name, sex, birthDate, caregiverName, photoPath)
+        }
 
-    fun updateChild(id: String, name: String, sex: Sex?, birthDate: LocalDate?) = viewModelScope.launch {
-        family.updateChild(id, name, sex, birthDate)
-    }
+    fun updateChild(id: String, name: String, sex: Sex?, birthDate: LocalDate?, photoPath: String?) =
+        viewModelScope.launch {
+            family.updateChild(id, name, sex, birthDate, photoPath)
+        }
 
     fun addCaregiver(name: String) = viewModelScope.launch {
         family.addCaregiver(name)

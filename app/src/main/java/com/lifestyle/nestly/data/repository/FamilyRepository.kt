@@ -14,6 +14,7 @@ import com.lifestyle.nestly.data.supabase.CaregiverDto
 import com.lifestyle.nestly.data.supabase.FamilyDto
 import com.lifestyle.nestly.data.supabase.InviteDto
 import com.lifestyle.nestly.data.supabase.ProfileDto
+import com.lifestyle.nestly.data.supabase.PhotoStore
 import com.lifestyle.nestly.data.supabase.RefreshBus
 import com.lifestyle.nestly.data.supabase.refetchFlow
 import com.lifestyle.nestly.data.supabase.withFreshSession
@@ -46,6 +47,7 @@ class FamilyRepository(
     private val client: SupabaseClient,
     private val prefs: UserPreferences,
     private val scope: CoroutineScope,
+    private val photos: PhotoStore,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val authUserId: String? get() = client.auth.currentSessionOrNull()?.user?.id
@@ -154,7 +156,13 @@ class FamilyRepository(
         }.decodeList<FamilyDto>().map { it.toEntity() }
 
     /** Creates a child, plus a family and an OWNER caregiver for this account if none exist yet. */
-    suspend fun addChild(name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String): ProfileEntity {
+    suspend fun addChild(
+        name: String,
+        sex: Sex?,
+        birthDate: LocalDate?,
+        caregiverName: String,
+        photoPath: String? = null,
+    ): ProfileEntity {
         val now = clock()
         val existingProfiles = fetchProfiles()
         val familyId: String
@@ -191,8 +199,10 @@ class FamilyRepository(
                 client.from("caregiver").insert(caregiver.toDto())
             }
         }
+        val profileId = UUID.randomUUID().toString()
+        val storedPhoto = photos.uploadProfileIfLocal(photoPath, familyId, profileId)
         val profile = ProfileEntity(
-            id = UUID.randomUUID().toString(),
+            id = profileId,
             familyId = familyId,
             name = name,
             birthDate = birthDate,
@@ -200,8 +210,15 @@ class FamilyRepository(
             profileType = ProfileType.CHILD,
             createdAt = now,
             updatedAt = now,
+            photoPath = storedPhoto,
+            photoUpdatedAt = if (storedPhoto != null) now else null,
         )
-        client.from("profile").insert(profile.toDto())
+        try {
+            client.from("profile").insert(profile.toDto())
+        } catch (e: Exception) {
+            if (storedPhoto != null && storedPhoto != photoPath) photos.deleteProfile(storedPhoto)
+            throw e
+        }
         prefs.setSelectedProfile(profile.id)
         RefreshBus.invalidate(RefreshBus.PROFILE, RefreshBus.CAREGIVER, RefreshBus.FAMILY)
         return profile
@@ -270,23 +287,39 @@ class FamilyRepository(
             order("created_at", Order.DESCENDING)
         }.decodeList<InviteDto>()
 
-    suspend fun updateChild(id: String, name: String, sex: Sex?, birthDate: LocalDate?) {
+    suspend fun updateChild(id: String, name: String, sex: Sex?, birthDate: LocalDate?, photoPath: String?) {
         val existing = client.from("profile").select {
             filter { eq("id", id) }
             limit(1)
         }.decodeSingleOrNull<ProfileDto>()?.toEntity() ?: return
+        val storedPhoto = photos.uploadProfileIfLocal(photoPath, existing.familyId, existing.id)
+        val now = clock()
         val updated = existing.copy(
             name = name.trim(),
             sex = sex,
             birthDate = birthDate,
-            updatedAt = clock(),
+            photoPath = storedPhoto,
+            photoUpdatedAt = when {
+                storedPhoto == null -> null
+                storedPhoto != existing.photoPath -> now
+                else -> existing.photoUpdatedAt
+            },
+            updatedAt = now,
             version = existing.version + 1,
         )
-        client.from("profile").update(updated.toDto()) {
-            filter {
-                eq("id", id)
-                eq("version", existing.version)
+        try {
+            client.from("profile").update(updated.toDto()) {
+                filter {
+                    eq("id", id)
+                    eq("version", existing.version)
+                }
             }
+        } catch (e: Exception) {
+            if (storedPhoto != null && storedPhoto != photoPath) photos.deleteProfile(storedPhoto)
+            throw e
+        }
+        if (existing.photoPath != null && existing.photoPath != storedPhoto) {
+            runCatching { photos.deleteProfile(existing.photoPath) }
         }
         RefreshBus.invalidate(RefreshBus.PROFILE)
     }
@@ -413,7 +446,14 @@ class FamilyRepository(
     }
 
     suspend fun importProfile(profile: ProfileEntity) {
-        client.from("profile").upsert(profile.toDto())
+        // A CSV or Nara row has no photo. Keep the one the family already saved.
+        val existing = getProfile(profile.id)
+        val kept = if (profile.photoPath == null && existing?.photoPath != null) {
+            profile.copy(photoPath = existing.photoPath, photoUpdatedAt = existing.photoUpdatedAt)
+        } else {
+            profile
+        }
+        client.from("profile").upsert(kept.toDto())
         RefreshBus.invalidate(RefreshBus.PROFILE)
     }
 

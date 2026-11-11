@@ -148,12 +148,18 @@ class AuthViewModel(private val container: AppContainer) : ViewModel() {
         container.family.joinWithInvite(code, caregiverName)
     }
 
-    fun addFirstChild(name: String, sex: com.lifestyle.nestly.data.model.Sex?, birthDate: java.time.LocalDate?, caregiverName: String) =
+    fun addFirstChild(
+        name: String,
+        sex: com.lifestyle.nestly.data.model.Sex?,
+        birthDate: java.time.LocalDate?,
+        caregiverName: String,
+        photoPath: String? = null,
+    ) =
         viewModelScope.launch {
             _busy.value = true
             _error.value = null
             try {
-                container.family.addChild(name, sex, birthDate, caregiverName)
+                container.family.addChild(name, sex, birthDate, caregiverName, photoPath)
             } catch (e: Exception) {
                 _error.value = e.message ?: "Couldn't save. Check your connection and try again."
             } finally {

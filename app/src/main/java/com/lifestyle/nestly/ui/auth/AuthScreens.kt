@@ -286,8 +286,8 @@ fun OnboardingScreen(authViewModel: AuthViewModel, hasFamily: Boolean) {
         AddChildDialog(
             askCaregiverName = false,
             onDismiss = { addingChild = false },
-            onConfirm = { name, sex, birthDate, _ ->
-                authViewModel.addFirstChild(name, sex, birthDate, caregiverName)
+            onConfirm = { name, sex, birthDate, _, photoPath ->
+                authViewModel.addFirstChild(name, sex, birthDate, caregiverName, photoPath)
                 addingChild = false
             },
         )

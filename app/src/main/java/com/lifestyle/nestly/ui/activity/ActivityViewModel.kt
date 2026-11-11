@@ -59,12 +59,15 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
      */
     val feedIntervalMinutes: StateFlow<Int> = container.family.selectedProfile
         .flatMapLatest { profile ->
+            val fallback = container.preferences.defaultFeedIntervalMinutes
             if (profile == null) {
-                flowOf(ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED))
+                fallback
             } else {
-                container.reminders.observeForProfile(profile.familyId, profile.id).map { reminders ->
-                    reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes
-                        ?: ReminderLogic.defaultIntervalMinutes(ReminderKind.FEED)
+                combine(
+                    container.reminders.observeForProfile(profile.familyId, profile.id),
+                    fallback,
+                ) { reminders, defaultMinutes ->
+                    reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes ?: defaultMinutes
                 }
             }
         }

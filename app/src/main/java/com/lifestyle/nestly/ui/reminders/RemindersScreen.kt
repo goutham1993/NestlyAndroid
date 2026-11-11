@@ -42,6 +42,7 @@ fun RemindersScreen(onBack: () -> Unit) {
     val container = LocalContext.current.appContainer
     val viewModel: RemindersViewModel = viewModel { RemindersViewModel(container) }
     val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val defaultFeedInterval by container.preferences.defaultFeedIntervalMinutes.collectAsStateWithLifecycle(initialValue = 180)
     val context = LocalContext.current
     var editing by remember { mutableStateOf<ReminderKind?>(null) }
 
@@ -68,7 +69,11 @@ fun RemindersScreen(onBack: () -> Unit) {
             ReminderKind.entries.forEach { kind ->
                 val row = rows[kind]
                 val enabled = row?.enabled == true
-                val minutes = row?.intervalMinutes ?: ReminderLogic.defaultIntervalMinutes(kind)
+                val minutes = row?.intervalMinutes ?: if (kind == ReminderKind.FEED) {
+                    defaultFeedInterval
+                } else {
+                    ReminderLogic.defaultIntervalMinutes(kind)
+                }
                 ReminderRow(
                     kind = kind,
                     enabled = enabled,
@@ -84,7 +89,11 @@ fun RemindersScreen(onBack: () -> Unit) {
     }
 
     editing?.let { kind ->
-        val minutes = rows[kind]?.intervalMinutes ?: ReminderLogic.defaultIntervalMinutes(kind)
+        val minutes = rows[kind]?.intervalMinutes ?: if (kind == ReminderKind.FEED) {
+            defaultFeedInterval
+        } else {
+            ReminderLogic.defaultIntervalMinutes(kind)
+        }
         DurationInputDialog(
             title = "${ReminderLogic.label(kind)} interval",
             initialSec = minutes * 60L,

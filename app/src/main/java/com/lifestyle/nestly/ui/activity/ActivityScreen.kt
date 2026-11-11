@@ -47,6 +47,7 @@ import com.lifestyle.nestly.data.prefs.ActivityToggle
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes
 import com.lifestyle.nestly.ui.components.BabyAvatar
+import com.lifestyle.nestly.ui.components.ChildPhotoField
 import com.lifestyle.nestly.ui.components.DateTimePickerDialog
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
@@ -145,8 +146,8 @@ private fun WelcomeScreen(appViewModel: AppViewModel, onImport: () -> Unit) {
         AddChildDialog(
             askCaregiverName = true,
             onDismiss = { adding = false },
-            onConfirm = { name, sex, birthDate, caregiver ->
-                appViewModel.addChild(name, sex, birthDate, caregiver)
+            onConfirm = { name, sex, birthDate, caregiver, photoPath ->
+                appViewModel.addChild(name, sex, birthDate, caregiver, photoPath)
                 adding = false
             },
         )
@@ -157,12 +158,13 @@ private fun WelcomeScreen(appViewModel: AppViewModel, onImport: () -> Unit) {
 fun AddChildDialog(
     askCaregiverName: Boolean,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String) -> Unit,
+    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String, photoPath: String?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
     var caregiver by remember { mutableStateOf("") }
     var sex by remember { mutableStateOf<Sex?>(null) }
     var birthDate by remember { mutableStateOf<LocalDate?>(null) }
+    var photoPath by remember { mutableStateOf<String?>(null) }
     var pickingDate by remember { mutableStateOf(false) }
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = NestlyColors.AccentText,
@@ -178,6 +180,7 @@ fun AddChildDialog(
         title = { Text("Add child", style = NestlyType.RowLabel) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ChildPhotoField(photoPath) { photoPath = it }
                 OutlinedTextField(
                     name,
                     { name = it },
@@ -214,7 +217,10 @@ fun AddChildDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name.trim(), sex, birthDate, caregiver.trim()) }, enabled = valid) {
+            TextButton(
+                onClick = { onConfirm(name.trim(), sex, birthDate, caregiver.trim(), photoPath) },
+                enabled = valid,
+            ) {
                 Text("Save", color = if (valid) NestlyColors.AccentText else NestlyColors.TextMuted)
             }
         },

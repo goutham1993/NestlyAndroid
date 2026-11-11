@@ -2,6 +2,7 @@ package com.lifestyle.nestly.data.repository
 
 import com.lifestyle.nestly.data.model.ReminderEntity
 import com.lifestyle.nestly.data.model.ReminderKind
+import com.lifestyle.nestly.data.prefs.UserPreferences
 import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.supabase.RefreshBus
 import com.lifestyle.nestly.data.supabase.ReminderDto
@@ -18,6 +19,7 @@ import java.util.UUID
 class ReminderRepository(
     private val client: SupabaseClient,
     private val family: FamilyRepository,
+    private val preferences: UserPreferences,
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun observeForProfile(familyId: String, profileId: String): Flow<List<ReminderEntity>> =
@@ -67,7 +69,11 @@ class ReminderRepository(
             caregiverId = caregiverId,
             profileId = scopedProfile,
             kind = kind,
-            intervalMinutes = ReminderLogic.defaultIntervalMinutes(kind),
+            intervalMinutes = if (kind == ReminderKind.FEED) {
+                preferences.defaultFeedIntervalMinutes.first()
+            } else {
+                ReminderLogic.defaultIntervalMinutes(kind)
+            },
             enabled = false,
             updatedAt = clock(),
         )

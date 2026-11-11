@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,11 +37,14 @@ import com.lifestyle.nestly.data.model.CaregiverEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.canRemoveCaregiver
 import kotlinx.coroutines.launch
+import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.model.Sex
 import com.lifestyle.nestly.ui.AppViewModel
 import com.lifestyle.nestly.ui.Routes
 import com.lifestyle.nestly.ui.activity.AddChildDialog
+import com.lifestyle.nestly.ui.components.ChildPhotoField
 import com.lifestyle.nestly.ui.components.DateTimePickerDialog
+import com.lifestyle.nestly.ui.components.DurationInputDialog
 import com.lifestyle.nestly.ui.components.DetailScreen
 import com.lifestyle.nestly.ui.components.Format
 import com.lifestyle.nestly.ui.components.FormRow
@@ -89,6 +93,13 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
     val signedIn by appViewModel.signedInCaregiver.collectAsStateWithLifecycle()
     var addingChild by remember { mutableStateOf(false) }
     var editingChild by remember { mutableStateOf<ProfileEntity?>(null) }
+    val photoEditId by appViewModel.photoEditProfileId.collectAsStateWithLifecycle()
+    LaunchedEffect(photoEditId, profiles) {
+        val id = photoEditId ?: return@LaunchedEffect
+        val child = profiles.orEmpty().find { it.id == id } ?: return@LaunchedEffect
+        editingChild = child
+        appViewModel.consumePhotoEdit()
+    }
     var addingCaregiver by remember { mutableStateOf(false) }
     var pendingRemoval by remember { mutableStateOf<CaregiverEntity?>(null) }
     var removing by remember { mutableStateOf(false) }
@@ -146,8 +157,8 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
         AddChildDialog(
             askCaregiverName = caregivers.isEmpty(),
             onDismiss = { addingChild = false },
-            onConfirm = { name, sex, birthDate, caregiverName ->
-                appViewModel.addChild(name, sex, birthDate, caregiverName)
+            onConfirm = { name, sex, birthDate, caregiverName, photoPath ->
+                appViewModel.addChild(name, sex, birthDate, caregiverName, photoPath)
                 addingChild = false
             },
         )
@@ -156,8 +167,8 @@ fun FamilyScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
         EditChildDialog(
             initial = child,
             onDismiss = { editingChild = null },
-            onConfirm = { name, sex, birthDate ->
-                appViewModel.updateChild(child.id, name, sex, birthDate)
+            onConfirm = { name, sex, birthDate, photoPath ->
+                appViewModel.updateChild(child.id, name, sex, birthDate, photoPath)
                 appViewModel.selectProfile(child.id)
                 editingChild = null
             },
@@ -305,11 +316,12 @@ private fun InviteSection(appViewModel: AppViewModel) {
 private fun EditChildDialog(
     initial: ProfileEntity,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?) -> Unit,
+    onConfirm: (name: String, sex: Sex?, birthDate: LocalDate?, photoPath: String?) -> Unit,
 ) {
     var name by remember { mutableStateOf(initial.name) }
     var sex by remember { mutableStateOf(initial.sex) }
     var birthDate by remember { mutableStateOf(initial.birthDate) }
+    var photoPath by remember { mutableStateOf(initial.photoPath) }
     var pickingDate by remember { mutableStateOf(false) }
     val fieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = NestlyColors.AccentText,
@@ -325,6 +337,7 @@ private fun EditChildDialog(
         title = { Text("Edit child", style = NestlyType.RowLabel) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ChildPhotoField(photoPath) { photoPath = it }
                 OutlinedTextField(
                     name,
                     { name = it },
@@ -351,7 +364,7 @@ private fun EditChildDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(name.trim(), sex, birthDate) }, enabled = valid) {
+            TextButton(onClick = { onConfirm(name.trim(), sex, birthDate, photoPath) }, enabled = valid) {
                 Text("Save", color = if (valid) NestlyColors.AccentText else NestlyColors.TextMuted)
             }
         },
@@ -378,8 +391,10 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
     val container = context.appContainer
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val defaultBottleMl by container.preferences.defaultBottleMl.collectAsStateWithLifecycle(initialValue = null)
+    val defaultFeedInterval by container.preferences.defaultFeedIntervalMinutes.collectAsStateWithLifecycle(initialValue = 180)
     val unitPrefs by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
     var editingDefaultAmount by remember { mutableStateOf(false) }
+    var editingFeedInterval by remember { mutableStateOf(false) }
     var confirmingClear by remember { mutableStateOf(false) }
     var clearing by remember { mutableStateOf(false) }
     var clearError by remember { mutableStateOf<String?>(null) }
@@ -423,8 +438,15 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
             serif = false,
             onClick = { editingDefaultAmount = true },
         )
+        MenuRow(
+            "Default feed interval",
+            subtitle = "When the next feed is due",
+            value = feedIntervalLabel(defaultFeedInterval),
+            serif = false,
+            onClick = { editingFeedInterval = true },
+        )
         Text(
-            "Tap to change it. Leave the amount empty and tap OK to turn the default off.",
+            "Bottle amount is used by Nightstand's Log Feed button. Feed interval sets when the next feed is due, and updates your feed reminders.",
             style = NestlyType.Small,
             color = NestlyColors.TextSecondary,
             modifier = Modifier.padding(20.dp),
@@ -462,6 +484,20 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
         }
     }
 
+    if (editingFeedInterval) {
+        DurationInputDialog(
+            title = "Default feed interval",
+            initialSec = defaultFeedInterval * 60L,
+            showHours = true,
+            onDismiss = { editingFeedInterval = false },
+            onConfirm = { seconds ->
+                editingFeedInterval = false
+                val minutes = (seconds / 60).toInt().coerceAtLeast(1)
+                scope.launch { applyDefaultFeedInterval(container, context, minutes) }
+            },
+        )
+    }
+
     if (confirmingClear) {
         AlertDialog(
             onDismissRequest = { if (!clearing) confirmingClear = false },
@@ -485,6 +521,7 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
                                 val familyId = container.family.currentFamilyId()
                                 if (familyId != null) {
                                     runCatching { container.photos.clearFamilyPhotos(familyId) }
+                                    runCatching { container.photos.clearFamilyProfilePhotos(familyId) }
                                 }
                                 container.family.clearCurrentFamilyData()
                             }
@@ -583,5 +620,51 @@ fun HelpScreen(onBack: () -> Unit) {
         MenuRow("Legal", onClick = {})
         Spacer(Modifier.height(20.dp))
         MenuRow("Advanced Settings", onClick = {})
+    }
+}
+
+private fun feedIntervalLabel(minutes: Int): String {
+    val hours = minutes / 60
+    val rest = minutes % 60
+    return when {
+        hours > 0 && rest > 0 -> "${hours}h ${rest}m"
+        hours > 0 -> "${hours}h"
+        else -> "${rest}m"
+    }
+}
+
+/** Saves the countdown interval and copies it onto existing feed reminders. */
+private suspend fun applyDefaultFeedInterval(
+    container: com.lifestyle.nestly.AppContainer,
+    context: android.content.Context,
+    minutes: Int,
+) {
+    container.preferences.setDefaultFeedIntervalMinutes(minutes)
+    val reminders = runCatching { container.reminders.fetchAll() }.getOrElse {
+        android.widget.Toast.makeText(
+            context,
+            "Couldn't update every feed reminder. Check your connection and try again.",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
+        return
+    }
+    var failed = false
+    for (reminder in reminders) {
+        if (reminder.kind != ReminderKind.FEED || reminder.intervalMinutes == minutes) continue
+        val saved = runCatching {
+            container.reminders.setInterval(ReminderKind.FEED, reminder.familyId, reminder.profileId, minutes)
+        }.getOrNull()
+        if (saved == null) {
+            failed = true
+        } else if (saved.enabled) {
+            runCatching { container.scheduler.schedule(saved) }
+        }
+    }
+    if (failed) {
+        android.widget.Toast.makeText(
+            context,
+            "Couldn't update every feed reminder. Check your connection and try again.",
+            android.widget.Toast.LENGTH_LONG,
+        ).show()
     }
 }

@@ -120,7 +120,7 @@ Unique: `(family_id, name)`, `(family_id, user_id)`.
 | `milestone_title, milestone_key` | text (key like `m6_3`, see milestones.json) |
 | `solids_meal_type` | `BREAKFAST, LUNCH, DINNER, SNACK` |
 | `solids_foods` | `text[]` |
-| `solids_resets_feed_schedule` | bool, not null, default `true`. `false` keeps the milk clock. Omit on non-solids rows. |
+| `solids_resets_feed_schedule` | bool, not null, default `true`. Records whether the solids meal stood in for milk. It does not move the next milk time. Omit on non-solids rows. |
 | `routine_name` | text |
 | `baby_first_title` | text |
 | `medical_temperature_c` | numeric |
@@ -378,7 +378,7 @@ Rendered in `card_order`, only if visible (§11.6). Each card (except Health) ha
 - **Feed** — Add opens a picker of enabled kinds among Breastfeed, Bottle, Solids, Combo, **always plus Vitamin D**. Rows:
   - "Last feeding": time-ago + value (oz 1 decimal / mL integer, or breastfeed duration). Feed types = BOTTLE_FEED, BREASTFEED, SOLIDS.
   - If a breast timer is running: in-progress "Breastfeeding" row with elapsed.
-  - "Next feeding": `Format.nextFeeding` (§13) using last feed + interval.
+  - "Next feeding": `Format.nextFeeding` (§13) using the latest bottle or breastfeed + interval. Solids do not move this.
   - Today list **expanded by default**.
 - **Pump** — "Last session" + amount; in-progress row when the pump timer runs.
 - **Diaper** — "Last change" + type label. Footer reads "View History".

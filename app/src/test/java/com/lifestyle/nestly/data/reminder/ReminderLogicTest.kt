@@ -40,8 +40,8 @@ class ReminderLogicTest {
         assertTrue(ReminderLogic.resetsFeedSchedule(bottle))
         assertTrue(ReminderLogic.resetsFeedSchedule(breast))
         assertFalse(ReminderLogic.resetsFeedSchedule(keeps))
-        assertTrue(ReminderLogic.resetsFeedSchedule(replaces))
-        assertTrue(ReminderLogic.resetsFeedSchedule(legacy))
+        assertFalse(ReminderLogic.resetsFeedSchedule(replaces))
+        assertFalse(ReminderLogic.resetsFeedSchedule(legacy))
     }
 
     @Test

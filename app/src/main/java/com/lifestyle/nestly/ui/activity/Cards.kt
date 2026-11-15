@@ -97,28 +97,29 @@ private fun TodayList(
 @Composable
 private fun FeedCard(ctx: CardContext) {
     val latest = ctx.data.latest[CardKind.FEED]
+    val shown = ctx.data.scheduleFeed ?: latest
     DashboardCard(CardKind.FEED, onAdd = ctx.onFeedPicker) {
-        if (latest == null) {
+        if (shown == null) {
             EmptyCardRow(IconKind.BOTTLE, "Track a feeding", onClick = ctx.onFeedPicker)
         } else {
             val units = currentUnitPrefs()
-            val (value, unit) = when (latest.type) {
-                ActivityType.BOTTLE_FEED -> latest.bottle?.totalMl?.let {
+            val (value, unit) = when (shown.type) {
+                ActivityType.BOTTLE_FEED -> shown.bottle?.totalMl?.let {
                     Format.number(Units.mlToDisplay(it, units.volume), if (units.volume == VolumeUnit.OZ) 1 else 0)
                 } to Units.volumeLabel(units.volume)
                 ActivityType.BREASTFEED ->
-                    latest.breastfeed?.let { b ->
+                    shown.breastfeed?.let { b ->
                         Format.duration(b.leftDurationSec + b.rightDurationSec)
                     } to null
-                else -> latest.label.lowercase() to null
+                else -> shown.label.lowercase() to null
             }
             LastEntryRow(
-                icon = latest.iconKind,
+                icon = shown.iconKind,
                 title = "Last feeding",
-                subtitle = Format.ago(latest.startTime, ctx.now),
+                subtitle = Format.ago(shown.startTime, ctx.now),
                 value = value,
                 unit = unit.takeIf { value != null },
-                onClick = { ctx.edit(latest) },
+                onClick = { ctx.edit(shown) },
             )
         }
         if (ctx.layout.isEnabled(ActivityToggle.BREASTFEEDING)) {
@@ -127,7 +128,7 @@ private fun FeedCard(ctx: CardContext) {
             }
         }
         // Above the Show More / Show Less row that TodayList renders.
-        if (latest != null) {
+        if (shown != null) {
             NextFeedingRow(ReminderLogic.nextFeedState(ctx.data.scheduleFeed?.startTime, ctx.feedIntervalMinutes, ctx.now))
         }
         TodayList(ctx, CardKind.FEED, showIcons = true, defaultExpanded = true)

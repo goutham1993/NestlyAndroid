@@ -124,12 +124,13 @@ class NightstandViewModel(
             )
             combine(flows) { values ->
                 @Suppress("UNCHECKED_CAST")
+                val schedule = values[4] as ActivityEntity?
                 RawFeeds(
-                    lastFeed = values[0] as ActivityEntity?,
+                    lastFeed = schedule ?: values[0] as ActivityEntity?,
                     recent = values[1] as List<ActivityEntity>,
                     reminders = values[2] as List<com.lifestyle.nestly.data.model.ReminderEntity>,
                     units = values[3] as UnitPrefs,
-                    scheduleFeed = values[4] as ActivityEntity?,
+                    scheduleFeed = schedule,
                 )
             }
         }

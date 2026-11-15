@@ -307,7 +307,7 @@ fun SolidsForm(form: FormScope) {
         )
         MilkScheduleChoice(
             title = "Replaces milk feed",
-            subtitle = "Restarts the next-feed timer",
+            subtitle = "Next milk time stays on the current clock",
             selected = d.solidsResetsFeedSchedule,
             onClick = { form.update { it.copy(solidsResetsFeedSchedule = true) } },
             modifier = Modifier.weight(1f),

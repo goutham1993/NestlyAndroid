@@ -14,12 +14,11 @@ object ReminderLogic {
 
     /**
      * Whether this activity anchors the milk / FEED reminder clock.
-     * Bottle and breastfeed always do; solids only when marked as a milk replacement.
-     * A solids row saved before the choice existed counts as a replacement.
+     * Only bottle and breastfeed do. Solids, including a meal marked as a milk
+     * replacement, stay on the log and leave the next-feed time where it is.
      */
     fun resetsFeedSchedule(activity: ActivityEntity): Boolean = when (activity.type) {
         ActivityType.BOTTLE_FEED, ActivityType.BREASTFEED -> true
-        ActivityType.SOLIDS -> activity.solids?.resetsFeedSchedule ?: true
         else -> false
     }
 

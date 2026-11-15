@@ -33,7 +33,7 @@ data class DashboardData(
     /** Everything since the start of yesterday, newest first. */
     val recent: List<ActivityEntity>,
     val latest: Map<CardKind, ActivityEntity?>,
-    /** Latest bottle, breastfeed, or solids that restarts the milk clock. */
+    /** Latest bottle or breastfeed. Solids do not move this. */
     val scheduleFeed: ActivityEntity?,
     val growth: List<ActivityEntity>,
     val milestones: List<ActivityEntity>,

@@ -86,8 +86,8 @@ data class SolidsDetails(
     val mealType: MealType? = null,
     val foods: List<String> = emptyList(),
     /**
-     * When true, this solids entry restarts the next-feed clock like milk.
-     * Missing older rows are treated as true. New logs default to false.
+     * Recorded choice: this solids meal stood in for milk, or it was extra food.
+     * Neither choice moves the next milk time. Bottle and breastfeed do that.
      */
     val resetsFeedSchedule: Boolean = true,
 )

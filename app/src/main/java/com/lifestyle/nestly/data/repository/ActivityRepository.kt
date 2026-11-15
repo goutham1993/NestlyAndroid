@@ -3,9 +3,7 @@ package com.lifestyle.nestly.data.repository
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.DailyVolume
-import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.model.TypeCount
-import com.lifestyle.nestly.data.reminder.ReminderLogic
 import com.lifestyle.nestly.data.supabase.ActivityDto
 import com.lifestyle.nestly.data.supabase.ConflictException
 import com.lifestyle.nestly.data.supabase.PhotoStore
@@ -68,7 +66,7 @@ class ActivityRepository(
     fun latestOf(familyId: String, profileId: String, types: List<ActivityType>): Flow<ActivityEntity?> =
         client.refetchWhenAuthenticated(RefreshBus.ACTIVITY) { fetchLatest(familyId, profileId, types) }
 
-    /** Latest bottle, breastfeed, or solids marked as a milk replacement. */
+    /** Latest bottle or breastfeed. Solids do not move the milk clock. */
     fun latestFeedForSchedule(familyId: String, profileId: String): Flow<ActivityEntity?> =
         client.refetchWhenAuthenticated(RefreshBus.ACTIVITY) { fetchLatestFeedForSchedule(familyId, profileId) }
 
@@ -160,8 +158,8 @@ class ActivityRepository(
         fetchLatest(familyId, profileId, types)
 
     /**
-     * Latest feed that should move the milk / FEED reminder clock.
-     * Skips solids that keep the milk schedule. Looks through the newest 30 feeds.
+     * Latest bottle or breastfeed for this child. Solids never move this clock,
+     * including a meal marked as a milk replacement.
      */
     suspend fun fetchLatestFeedForSchedule(familyId: String, profileId: String): ActivityEntity? {
         if (profileId.isBlank()) return null
@@ -170,11 +168,11 @@ class ActivityRepository(
                 eq("family_id", familyId)
                 eq("profile_id", profileId)
                 filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null)
-                isIn("type", ReminderLogic.typesFor(ReminderKind.FEED).map { it.name })
+                isIn("type", listOf(ActivityType.BOTTLE_FEED.name, ActivityType.BREASTFEED.name))
             }
             order("start_time", Order.DESCENDING)
-            limit(30)
-        }.decodeList<ActivityDto>().map { it.toEntity() }.firstOrNull { ReminderLogic.resetsFeedSchedule(it) }
+            limit(1)
+        }.decodeSingleOrNull<ActivityDto>()?.toEntity()
     }
 
     private suspend fun fetchLatest(familyId: String, profileId: String, types: List<ActivityType>): ActivityEntity? =

@@ -120,6 +120,7 @@ Unique: `(family_id, name)`, `(family_id, user_id)`.
 | `milestone_title, milestone_key` | text (key like `m6_3`, see milestones.json) |
 | `solids_meal_type` | `BREAKFAST, LUNCH, DINNER, SNACK` |
 | `solids_foods` | `text[]` |
+| `solids_resets_feed_schedule` | bool, not null, default `true`. `false` keeps the milk clock. Omit on non-solids rows. |
 | `routine_name` | text |
 | `baby_first_title` | text |
 | `medical_temperature_c` | numeric |

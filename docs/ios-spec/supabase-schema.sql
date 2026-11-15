@@ -106,6 +106,8 @@ create table public.activity (
 
     solids_meal_type          text check (solids_meal_type in ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK')),
     solids_foods              text[],
+    -- True restarts the next-feed clock. Existing rows default to true.
+    solids_resets_feed_schedule boolean not null default true,
 
     routine_name              text,
 

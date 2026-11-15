@@ -55,11 +55,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -455,21 +458,78 @@ private fun TimerBanners(
 
 @Composable
 private fun QuickLogRow(cards: List<CardKind>, layout: ActivityLayout, onOpenEntry: (EntryRequest) -> Unit) {
+    val logCards = cards.filter { it != CardKind.HEALTH }
+    val scroll = rememberScrollState()
+    val fadeColor = NestlyColors.Background
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Log", style = NestlyType.SectionTitle, color = NestlyColors.TextPrimary)
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            cards.filter { it != CardKind.HEALTH }.forEach { card ->
-                QuickLogTile(card, layout, onOpenEntry)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val gap = 12.dp
+            val peek = 32.dp
+            val fullTiles = 4
+            val natural = 76.dp
+            val overflows = logCards.size > fullTiles &&
+                natural * logCards.size + gap * (logCards.size - 1) > maxWidth
+            // Keep four actions fully visible and let the next one peek, so the row reads as scrollable.
+            val tileWidth = if (overflows) {
+                ((maxWidth - peek - gap * fullTiles) / fullTiles).coerceIn(64.dp, natural)
+            } else {
+                natural
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .drawWithContent {
+                        drawContent()
+                        val fadePx = 48.dp.toPx()
+                        if (scroll.canScrollForward) {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0f to Color.Transparent,
+                                        0.4f to fadeColor.copy(alpha = 0.45f),
+                                        1f to fadeColor,
+                                    ),
+                                    startX = size.width - fadePx,
+                                    endX = size.width,
+                                ),
+                            )
+                        }
+                        if (scroll.canScrollBackward) {
+                            drawRect(
+                                brush = Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0f to fadeColor,
+                                        0.6f to fadeColor.copy(alpha = 0.45f),
+                                        1f to Color.Transparent,
+                                    ),
+                                    startX = 0f,
+                                    endX = fadePx,
+                                ),
+                            )
+                        }
+                    },
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(scroll),
+                    horizontalArrangement = Arrangement.spacedBy(gap),
+                ) {
+                    logCards.forEach { card ->
+                        QuickLogTile(card, layout, tileWidth, onOpenEntry)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun QuickLogTile(card: CardKind, layout: ActivityLayout, onOpenEntry: (EntryRequest) -> Unit) {
+private fun QuickLogTile(
+    card: CardKind,
+    layout: ActivityLayout,
+    width: Dp,
+    onOpenEntry: (EntryRequest) -> Unit,
+) {
     var menu by remember { mutableStateOf(false) }
     val options = when (card) {
         CardKind.FEED -> feedOptions(layout)
@@ -480,7 +540,7 @@ private fun QuickLogTile(card: CardKind, layout: ActivityLayout, onOpenEntry: (E
         Box {
             Column(
                 Modifier
-                    .width(76.dp)
+                    .width(width)
                     .clip(CardRadius)
                     .background(NestlyColors.Surface)
                     .clickable {
@@ -628,7 +688,7 @@ private fun StatusCard(card: CardKind, status: GlanceStatus, modifier: Modifier,
     val tint = card.headerColor
     Column(
         modifier
-            .height(148.dp)
+            .height(176.dp)
             .clip(CardRadius)
             .background(NestlyColors.Surface)
             .clickable(onClick = onClick)
@@ -656,6 +716,7 @@ private fun StatusCard(card: CardKind, status: GlanceStatus, modifier: Modifier,
                         style = NestlyType.Small.copy(fontWeight = FontWeight.Medium),
                         color = if (status.footnoteWarning) NestlyColors.Warning else NestlyColors.TextSecondary,
                         maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

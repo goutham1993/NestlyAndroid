@@ -52,6 +52,9 @@ class EntryController(
         private set
     var saveError by mutableStateOf<String?>(null)
         private set
+    /** Who originally logged this entry. Null for a new entry, or when the name can't be resolved. */
+    var enteredByName by mutableStateOf<String?>(null)
+        private set
 
     val isEditing: Boolean get() = request is EntryRequest.Edit
 
@@ -204,6 +207,7 @@ class EntryController(
                     existing?.id?.let { id -> runCatching { container.activities.get(id) }.getOrNull() }?.let { fresh ->
                         existing = fresh
                         draft = EntryBuilder.draftOf(fresh)
+                        enteredByName = resolveEnteredBy(fresh.createdById)
                     }
                     e.message
                 } else {
@@ -253,6 +257,7 @@ class EntryController(
                 existing = resolved
                 kind = EntryKind.of(resolved.type)
                 draft = EntryBuilder.draftOf(resolved)
+                enteredByName = resolveEnteredBy(resolved.createdById)
                 loaded = true
             }
             else -> Unit
@@ -283,6 +288,16 @@ class EntryController(
                 draft = draft.copy(dose = last.dose, doseUnit = last.doseUnit ?: draft.doseUnit)
             }
         }
+    }
+
+    /** Caregiver name for [id], including caregivers who have since been removed. */
+    private suspend fun resolveEnteredBy(id: String?): String? {
+        val caregiverId = id?.trim()?.ifEmpty { null } ?: return null
+        val known = runCatching {
+            container.family.caregivers.first().find { it.id == caregiverId }?.name
+        }.getOrNull()?.trim()?.ifEmpty { null }
+        if (known != null) return known
+        return runCatching { container.family.caregiverName(caregiverId) }.getOrNull()
     }
 
     private fun initialDraft(request: EntryRequest): EntryDraft {

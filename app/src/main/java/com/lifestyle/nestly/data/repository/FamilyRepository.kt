@@ -150,6 +150,12 @@ class FamilyRepository(
             order("name", Order.ASCENDING)
         }.decodeList<CaregiverDto>().map { it.toEntity() }
 
+    /** Name for this caregiver, including ones who have been removed, so a past entry can still say who logged it. */
+    suspend fun caregiverName(id: String): String? =
+        client.from("caregiver").select {
+            filter { eq("id", id) }
+        }.decodeList<CaregiverDto>().firstOrNull()?.name?.trim()?.ifEmpty { null }
+
     suspend fun fetchFamilies(): List<FamilyEntity> =
         client.from("family").select {
             filter { filter("deleted_at", io.github.jan.supabase.postgrest.query.filter.FilterOperator.IS, null) }

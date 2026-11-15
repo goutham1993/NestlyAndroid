@@ -112,6 +112,14 @@ fun EntrySheetHost(request: EntryRequest, onDismiss: () -> Unit) {
             EntryKind.VITAMIN_D -> VitaminDForm(form)
         }
         NotesAndPhoto(form)
+        controller.enteredByName?.let { name ->
+            FormRow(
+                label = "Entry added by",
+                value = name,
+                valueColor = NestlyColors.TextSecondary,
+                modifier = Modifier.padding(top = 24.dp),
+            )
+        }
     }
 }
 

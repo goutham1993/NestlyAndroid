@@ -118,30 +118,27 @@ class NightstandViewModel(
             val flows: List<Flow<Any?>> = listOf(
                 container.activities.latestOf(familyId, profileId, feedTypes),
                 container.activities.range(familyId, profileId, since, Long.MAX_VALUE),
-                container.reminders.observeForProfile(familyId, profileId),
                 container.preferences.units,
                 container.activities.latestFeedForSchedule(familyId, profileId),
             )
             combine(flows) { values ->
                 @Suppress("UNCHECKED_CAST")
-                val schedule = values[4] as ActivityEntity?
+                val schedule = values[3] as ActivityEntity?
                 RawFeeds(
                     lastFeed = schedule ?: values[0] as ActivityEntity?,
                     recent = values[1] as List<ActivityEntity>,
-                    reminders = values[2] as List<com.lifestyle.nestly.data.model.ReminderEntity>,
-                    units = values[3] as UnitPrefs,
+                    units = values[2] as UnitPrefs,
                     scheduleFeed = schedule,
                 )
             }
         }
-        return combine(inner, now, container.preferences.defaultFeedIntervalMinutes) { raw, nowMs, defaultInterval ->
+        val interval = ReminderLogic.feedIntervalMinutes(profile)
+        return combine(inner, now) { raw, nowMs ->
             val startOfToday = startOfDay(nowMs)
             val todayFeeds = raw.recent.filter {
                 it.deletedAt == null && it.type in feedTypes &&
                     it.startTime >= startOfToday && it.startTime <= nowMs + 60_000L
             }
-            val interval = raw.reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes
-                ?: defaultInterval
             NightstandState(
                 profileName = profile.name,
                 lastFeed = raw.lastFeed,
@@ -165,7 +162,6 @@ class NightstandViewModel(
     private data class RawFeeds(
         val lastFeed: ActivityEntity?,
         val recent: List<ActivityEntity>,
-        val reminders: List<com.lifestyle.nestly.data.model.ReminderEntity>,
         val units: UnitPrefs,
         val scheduleFeed: ActivityEntity?,
     )

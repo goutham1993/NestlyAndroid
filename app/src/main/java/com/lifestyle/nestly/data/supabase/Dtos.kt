@@ -89,6 +89,7 @@ data class ProfileDto(
     val version: Int = 1,
     @SerialName("photo_path") val photoPath: String? = null,
     @SerialName("photo_updated_at") val photoUpdatedAt: String? = null,
+    @SerialName("feed_interval_minutes") val feedIntervalMinutes: Int? = null,
 ) {
     fun toEntity() = ProfileEntity(
         id, familyId, name,
@@ -98,6 +99,7 @@ data class ProfileDto(
         createdAt.isoToMillis(), updatedAt.isoToMillis(), deletedAt?.isoToMillis(), version,
         photoPath = photoPath,
         photoUpdatedAt = photoUpdatedAt?.isoToMillis(),
+        feedIntervalMinutes = feedIntervalMinutes,
     )
 }
 
@@ -106,6 +108,7 @@ fun ProfileEntity.toDto() = ProfileDto(
     createdAt.toIso(), updatedAt.toIso(), deletedAt?.toIso(), version,
     photoPath = photoPath,
     photoUpdatedAt = photoUpdatedAt?.toIso(),
+    feedIntervalMinutes = feedIntervalMinutes,
 )
 
 @Serializable

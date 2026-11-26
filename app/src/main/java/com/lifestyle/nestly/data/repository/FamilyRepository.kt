@@ -11,6 +11,7 @@ import com.lifestyle.nestly.data.prefs.UserPreferences
 import com.lifestyle.nestly.data.supabase.AcceptInviteParams
 import com.lifestyle.nestly.data.supabase.AcceptInviteResult
 import com.lifestyle.nestly.data.supabase.CaregiverDto
+import com.lifestyle.nestly.data.supabase.ConflictException
 import com.lifestyle.nestly.data.supabase.FamilyDto
 import com.lifestyle.nestly.data.supabase.InviteDto
 import com.lifestyle.nestly.data.supabase.ProfileDto
@@ -330,6 +331,27 @@ class FamilyRepository(
         RefreshBus.invalidate(RefreshBus.PROFILE)
     }
 
+    /**
+     * Sets the child's next-feed interval for the whole family. Writes only that
+     * column so an older build saving the same child can't wipe it.
+     */
+    suspend fun setFeedInterval(profileId: String, minutes: Int) {
+        val existing = getProfile(profileId) ?: return
+        val value = minutes.coerceAtLeast(1)
+        client.from("profile").update({
+            set("feed_interval_minutes", value)
+            set("updated_at", clock().toIso())
+            set("version", existing.version + 1)
+        }) {
+            filter {
+                eq("id", profileId)
+                eq("version", existing.version)
+            }
+        }
+        if (getProfile(profileId)?.feedIntervalMinutes != value) throw ConflictException()
+        RefreshBus.invalidate(RefreshBus.PROFILE)
+    }
+
     suspend fun addCaregiver(name: String): CaregiverEntity? {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return null
@@ -454,11 +476,12 @@ class FamilyRepository(
     suspend fun importProfile(profile: ProfileEntity) {
         // A CSV or Nara row has no photo. Keep the one the family already saved.
         val existing = getProfile(profile.id)
-        val kept = if (profile.photoPath == null && existing?.photoPath != null) {
+        val keptPhoto = if (profile.photoPath == null && existing?.photoPath != null) {
             profile.copy(photoPath = existing.photoPath, photoUpdatedAt = existing.photoUpdatedAt)
         } else {
             profile
         }
+        val kept = keptPhoto.copy(feedIntervalMinutes = profile.feedIntervalMinutes ?: existing?.feedIntervalMinutes)
         client.from("profile").upsert(kept.toDto())
         RefreshBus.invalidate(RefreshBus.PROFILE)
     }

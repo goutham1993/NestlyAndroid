@@ -60,4 +60,6 @@ data class ProfileEntity(
     val photoPath: String? = null,
     /** When the shared photo was last saved. Drives the age photo prompt. */
     val photoUpdatedAt: Long? = null,
+    /** Minutes between feeds for the next-feed estimate, shared by the family; null uses the app default. */
+    val feedIntervalMinutes: Int? = null,
 )

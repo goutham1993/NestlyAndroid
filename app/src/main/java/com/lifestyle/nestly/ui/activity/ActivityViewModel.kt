@@ -52,27 +52,9 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
     val timers: StateFlow<Map<TimerKey, TimerState>> = container.timers.timers
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
-    /**
-     * Feed interval set in Reminders, used to estimate the next feeding on
-     * the Feed card. Kept separate from [data] so the dashboard still loads
-     * if the reminder fetch fails; falls back to the default (3h) until the
-     * saved interval arrives, exactly like the nightstand does. The
-     * reminder's on/off switch is ignored — this is an estimate, not an alert.
-     */
+    /** The child's shared feed interval, used to estimate the next feeding on the Feed card. */
     val feedIntervalMinutes: StateFlow<Int> = container.family.selectedProfile
-        .flatMapLatest { profile ->
-            val fallback = container.preferences.defaultFeedIntervalMinutes
-            if (profile == null) {
-                fallback
-            } else {
-                combine(
-                    container.reminders.observeForProfile(profile.familyId, profile.id),
-                    fallback,
-                ) { reminders, defaultMinutes ->
-                    reminders.firstOrNull { it.kind == ReminderKind.FEED }?.intervalMinutes ?: defaultMinutes
-                }
-            }
-        }
+        .map { ReminderLogic.feedIntervalMinutes(it) }
         .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,

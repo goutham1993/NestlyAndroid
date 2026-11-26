@@ -2,6 +2,7 @@ package com.lifestyle.nestly.data.reminder
 
 import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.ReminderKind
 
 object ReminderLogic {
@@ -31,6 +32,14 @@ object ReminderLogic {
         val due = lastActivityStart + intervalMinutes * 60_000L
         return if (due > now) due else now + 60_000L
     }
+
+    /**
+     * Interval behind the next-feed estimate. Comes from the child so every
+     * caregiver and device agrees; reminder rows are per caregiver and only
+     * drive that caregiver's notifications.
+     */
+    fun feedIntervalMinutes(profile: ProfileEntity?): Int =
+        profile?.feedIntervalMinutes?.takeIf { it > 0 } ?: defaultIntervalMinutes(ReminderKind.FEED)
 
     /** Absolute time the next feed is estimated to be due, or null with no feed history. */
     fun nextFeedDueMs(lastFeedStart: Long?, intervalMinutes: Int): Long? =

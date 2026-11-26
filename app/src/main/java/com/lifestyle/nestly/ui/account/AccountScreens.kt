@@ -36,7 +36,6 @@ import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.model.CaregiverEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.canRemoveCaregiver
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.model.Sex
@@ -292,7 +291,8 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
     val container = context.appContainer
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val defaultBottleMl by container.preferences.defaultBottleMl.collectAsStateWithLifecycle(initialValue = null)
-    val defaultFeedInterval by container.preferences.defaultFeedIntervalMinutes.collectAsStateWithLifecycle(initialValue = 180)
+    val selectedProfile by container.family.selectedProfile.collectAsStateWithLifecycle(initialValue = null)
+    val feedInterval = com.lifestyle.nestly.data.reminder.ReminderLogic.feedIntervalMinutes(selectedProfile)
     val unitPrefs by container.preferences.units.collectAsStateWithLifecycle(initialValue = UnitPrefs.DEFAULT)
     var editingDefaultAmount by remember { mutableStateOf(false) }
     var editingFeedInterval by remember { mutableStateOf(false) }
@@ -339,15 +339,18 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
             serif = false,
             onClick = { editingDefaultAmount = true },
         )
-        MenuRow(
-            "Default feed interval",
-            subtitle = "When the next feed is due",
-            value = feedIntervalLabel(defaultFeedInterval),
-            serif = false,
-            onClick = { editingFeedInterval = true },
-        )
+        selectedProfile?.let { child ->
+            MenuRow(
+                "Feed interval",
+                subtitle = "When ${child.name}'s next feed is due",
+                value = feedIntervalLabel(feedInterval),
+                serif = false,
+                onClick = { editingFeedInterval = true },
+            )
+        }
         Text(
-            "Bottle amount is used by Nightstand's Log Feed button. Feed interval sets when the next feed is due, and updates your feed reminders.",
+            "Bottle amount is used by Nightstand's Log Feed button. Feed interval sets when the next feed is due " +
+                "for everyone in your family, and updates your feed reminders.",
             style = NestlyType.Small,
             color = NestlyColors.TextSecondary,
             modifier = Modifier.padding(20.dp),
@@ -385,16 +388,17 @@ fun SettingsScreen(onBack: () -> Unit, navigate: (String) -> Unit) {
         }
     }
 
-    if (editingFeedInterval) {
+    val child = selectedProfile
+    if (editingFeedInterval && child != null) {
         DurationInputDialog(
-            title = "Default feed interval",
-            initialSec = defaultFeedInterval * 60L,
+            title = "Feed interval",
+            initialSec = feedInterval * 60L,
             showHours = true,
             onDismiss = { editingFeedInterval = false },
             onConfirm = { seconds ->
                 editingFeedInterval = false
                 val minutes = (seconds / 60).toInt().coerceAtLeast(1)
-                scope.launch { applyDefaultFeedInterval(container, context, minutes) }
+                scope.launch { applyDefaultFeedInterval(container, context, child, minutes) }
             },
         )
     }
@@ -535,35 +539,32 @@ private fun feedIntervalLabel(minutes: Int): String {
 }
 
 /**
- * Saves the countdown interval and writes it to every child's feed reminder,
- * creating the row where missing. The local preference alone never leaves this
- * device, so other devices signed in to the family would keep counting down
- * from their own default.
+ * Saves the child's shared next-feed interval, then copies it onto this
+ * caregiver's own feed reminders.
  */
 private suspend fun applyDefaultFeedInterval(
     container: com.lifestyle.nestly.AppContainer,
     context: android.content.Context,
+    profile: ProfileEntity,
     minutes: Int,
 ) {
     container.preferences.setDefaultFeedIntervalMinutes(minutes)
-    val (reminders, profiles) = runCatching {
-        container.reminders.fetchAll() to container.family.profiles.first()
+    val reminders = runCatching {
+        container.family.setFeedInterval(profile.id, minutes)
+        container.reminders.fetchAll()
     }.getOrElse {
         android.widget.Toast.makeText(
             context,
-            "Couldn't update every feed reminder. Check your connection and try again.",
+            "Couldn't save the feed interval. Check your connection and try again.",
             android.widget.Toast.LENGTH_LONG,
         ).show()
         return
     }
-    val feedReminders = reminders.filter { it.kind == ReminderKind.FEED }
-    val targets = feedReminders.filter { it.intervalMinutes != minutes }.map { it.familyId to it.profileId } +
-        profiles.filter { p -> feedReminders.none { it.familyId == p.familyId && it.profileId == p.id } }
-            .map { it.familyId to it.id }
     var failed = false
-    for ((familyId, profileId) in targets) {
+    for (reminder in reminders) {
+        if (reminder.kind != ReminderKind.FEED || reminder.intervalMinutes == minutes) continue
         val saved = runCatching {
-            container.reminders.setInterval(ReminderKind.FEED, familyId, profileId, minutes)
+            container.reminders.setInterval(ReminderKind.FEED, reminder.familyId, reminder.profileId, minutes)
         }.getOrNull()
         if (saved == null) {
             failed = true

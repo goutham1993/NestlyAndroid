@@ -36,6 +36,7 @@ import com.lifestyle.nestly.appContainer
 import com.lifestyle.nestly.data.model.CaregiverEntity
 import com.lifestyle.nestly.data.model.ProfileEntity
 import com.lifestyle.nestly.data.model.canRemoveCaregiver
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.lifestyle.nestly.data.model.ReminderKind
 import com.lifestyle.nestly.data.model.Sex
@@ -533,14 +534,21 @@ private fun feedIntervalLabel(minutes: Int): String {
     }
 }
 
-/** Saves the countdown interval and copies it onto existing feed reminders. */
+/**
+ * Saves the countdown interval and writes it to every child's feed reminder,
+ * creating the row where missing. The local preference alone never leaves this
+ * device, so other devices signed in to the family would keep counting down
+ * from their own default.
+ */
 private suspend fun applyDefaultFeedInterval(
     container: com.lifestyle.nestly.AppContainer,
     context: android.content.Context,
     minutes: Int,
 ) {
     container.preferences.setDefaultFeedIntervalMinutes(minutes)
-    val reminders = runCatching { container.reminders.fetchAll() }.getOrElse {
+    val (reminders, profiles) = runCatching {
+        container.reminders.fetchAll() to container.family.profiles.first()
+    }.getOrElse {
         android.widget.Toast.makeText(
             context,
             "Couldn't update every feed reminder. Check your connection and try again.",
@@ -548,11 +556,14 @@ private suspend fun applyDefaultFeedInterval(
         ).show()
         return
     }
+    val feedReminders = reminders.filter { it.kind == ReminderKind.FEED }
+    val targets = feedReminders.filter { it.intervalMinutes != minutes }.map { it.familyId to it.profileId } +
+        profiles.filter { p -> feedReminders.none { it.familyId == p.familyId && it.profileId == p.id } }
+            .map { it.familyId to it.id }
     var failed = false
-    for (reminder in reminders) {
-        if (reminder.kind != ReminderKind.FEED || reminder.intervalMinutes == minutes) continue
+    for ((familyId, profileId) in targets) {
         val saved = runCatching {
-            container.reminders.setInterval(ReminderKind.FEED, reminder.familyId, reminder.profileId, minutes)
+            container.reminders.setInterval(ReminderKind.FEED, familyId, profileId, minutes)
         }.getOrNull()
         if (saved == null) {
             failed = true
